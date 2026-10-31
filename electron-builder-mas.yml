@@ -12,6 +12,13 @@ asarUnpack:
     - "./dist/fontlist"
     - "node_modules/better-sqlite3/**/*"
 forceCodeSigning: true
+electronFuses:
+    runAsNode: false
+    enableCookieEncryption: true
+    enableNodeOptionsEnvironmentVariable: false
+    enableNodeCliInspectArguments: false
+    enableEmbeddedAsarIntegrityValidation: true
+    onlyLoadAppFromAsar: true
 directories:
     output: "./bin/${platform}/${arch}/"
 mac:

@@ -58,18 +58,21 @@ export class AppLog {
     title: string
     details?: string
     iid?: number
+    url?: string
     time: Date
 
     constructor(
         type: AppLogType,
         title: string,
         details: string = null,
-        iid: number = null
+        iid: number = null,
+        url: string = null
     ) {
         this.type = type
         this.title = title
         this.details = details
         this.iid = iid
+        this.url = url
         this.time = new Date()
     }
 }
@@ -167,6 +170,7 @@ export type ContextMenuActionTypes =
 
 export const TOGGLE_LOGS = "TOGGLE_LOGS"
 export const PUSH_NOTIFICATION = "PUSH_NOTIFICATION"
+export const UPDATE_AVAILABLE = "UPDATE_AVAILABLE"
 
 interface ToggleLogMenuAction {
     type: typeof TOGGLE_LOGS
@@ -179,7 +183,16 @@ interface PushNotificationAction {
     source: string
 }
 
-export type LogMenuActionType = ToggleLogMenuAction | PushNotificationAction
+interface UpdateAvailableAction {
+    type: typeof UPDATE_AVAILABLE
+    version: string
+    url: string
+}
+
+export type LogMenuActionType =
+    | ToggleLogMenuAction
+    | PushNotificationAction
+    | UpdateAvailableAction
 
 export const TOGGLE_MENU = "TOGGLE_MENU"
 
@@ -416,6 +429,8 @@ export function initApp(): AppThunk<Promise<void>> {
         dispatch(selectAllArticles())
         await dispatch(fetchItems())
         dispatch(updateFavicon())
+        const update = await window.utils.checkForUpdate()
+        if (update) dispatch({ type: UPDATE_AVAILABLE, ...update })
     }
 }
 
@@ -695,6 +710,26 @@ export function appReducer(
                     ...state.logMenu,
                     display: !state.logMenu.display,
                     notify: false,
+                },
+            }
+        case UPDATE_AVAILABLE:
+            return {
+                ...state,
+                logMenu: {
+                    ...state.logMenu,
+                    notify: true,
+                    logs: [
+                        ...state.logMenu.logs,
+                        new AppLog(
+                            AppLogType.Info,
+                            intl.get("log.updateAvailable", {
+                                version: action.version,
+                            }),
+                            null,
+                            null,
+                            action.url
+                        ),
+                    ],
                 },
             }
         case PUSH_NOTIFICATION:

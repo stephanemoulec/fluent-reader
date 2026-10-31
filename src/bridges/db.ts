@@ -8,6 +8,13 @@ export type DatabaseQuery = {
 
 export type DatabaseResult = unknown[] | undefined
 
+export type ExportDialogTexts = {
+    title: string
+    message: string
+    exclude: string
+    include: string
+}
+
 export type RestoreDialogTexts = {
     title: string
     message: string
@@ -26,7 +33,8 @@ const dbBridge = {
     batch: (queries: DatabaseQuery[]): Promise<DatabaseResult[]> =>
         ipcRenderer.invoke("db:batch", queries),
 
-    exportAll: (): Promise<void> => ipcRenderer.invoke("db-export-all"),
+    exportAll: (texts: ExportDialogTexts): Promise<void> =>
+        ipcRenderer.invoke("db-export-all", texts),
 
     importAll: (texts: RestoreDialogTexts): Promise<boolean> =>
         ipcRenderer.invoke("db-import-all", texts),

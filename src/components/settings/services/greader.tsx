@@ -17,7 +17,7 @@ import {
     IDropdownOption,
 } from "@fluentui/react"
 import DangerButton from "../../utils/danger-button"
-import { urlTest } from "../../../scripts/utils"
+import { confirmEndpointSecurity, urlTest } from "../../../scripts/utils"
 import LiteExporter from "./lite-exporter"
 
 type GReaderConfigsTabState = {
@@ -82,6 +82,7 @@ class GReaderConfigsTab extends React.Component<
     }
 
     save = async () => {
+        if (!(await confirmEndpointSecurity(this.state.endpoint))) return
         let configs: GReaderConfigs
         if (this.state.existing) {
             configs = {

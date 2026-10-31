@@ -16,7 +16,7 @@ import {
     IDropdownOption,
 } from "@fluentui/react"
 import DangerButton from "../../utils/danger-button"
-import { urlTest } from "../../../scripts/utils"
+import { confirmEndpointSecurity, urlTest } from "../../../scripts/utils"
 import { MinifluxConfigs } from "../../../scripts/models/services/miniflux"
 
 type MinifluxConfigsTabState = {
@@ -100,6 +100,7 @@ class MinifluxConfigsTab extends React.Component<
     }
 
     save = async () => {
+        if (!(await confirmEndpointSecurity(this.state.endpoint))) return
         let configs: MinifluxConfigs
 
         if (this.state.existing) {

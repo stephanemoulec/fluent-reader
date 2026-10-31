@@ -1,5 +1,6 @@
-import { ipcMain, shell, dialog, app, session, clipboard } from "electron"
+import { ipcMain, shell, dialog, app, session, clipboard, net } from "electron"
 import { WindowManager } from "./window"
+import { handleIpc, handleIpcOnce, onIpc } from "./ipc"
 import * as fs from "node:fs"
 import { ImageCallbackTypes, StoredRules, TouchBarTexts } from "../schema-types"
 import { initMainTouchBar } from "./touchbar"
@@ -14,6 +15,50 @@ const webviewInputFocused = `(() => {
         element.matches("input, textarea, select, iframe, frame") || element.isContentEditable
     )
 })()`
+
+// Chromium's own limit on how long a click allows a page to open a popup.
+const USER_INPUT_WINDOW = 5000
+const USER_INPUT_EVENTS = new Set([
+    "mouseDown",
+    "rawKeyDown",
+    "keyDown",
+    "gestureTap",
+])
+
+const LATEST_RELEASE_API =
+    "https://api.github.com/repos/yang991178/fluent-reader/releases/latest"
+
+export function isNewerVersion(latest: string, current: string) {
+    const parse = (version: string) =>
+        version.replace(/^v/, "").split(".").map(Number)
+    const [a, b] = [parse(latest), parse(current)]
+    for (let i = 0; i < 3; i++) {
+        if (a[i] > b[i]) return true
+        if (a[i] < b[i]) return false
+    }
+    return false
+}
+
+async function checkForUpdate() {
+    // Store builds update themselves, and dev builds have no release to compare.
+    if (!app.isPackaged || process.windowsStore || process.mas) return null
+    try {
+        const response = await net.fetch(LATEST_RELEASE_API)
+        if (!response.ok) return null
+        const { tag_name: version, html_url: url } = await response.json()
+        if (
+            typeof version === "string" &&
+            typeof url === "string" &&
+            url.startsWith("https://github.com/") &&
+            isNewerVersion(version, app.getVersion())
+        ) {
+            return { version, url }
+        }
+    } catch (err) {
+        console.log(err)
+    }
+    return null
+}
 
 // Electron approves every permission request unless a session says otherwise.
 const GUEST_PERMISSIONS = new Set(["fullscreen", "clipboard-sanitized-write"])
@@ -55,8 +100,18 @@ export function setUtilsListeners(manager: WindowManager) {
     }
 
     app.on("web-contents-created", (_, contents) => {
+        // Guests may only reach the browser right after real input, once per input.
+        let lastInput = 0
+        contents.on("input-event", (_, input) => {
+            if (USER_INPUT_EVENTS.has(input.type)) lastInput = Date.now()
+        })
+        const consumeInput = () => {
+            const allowed = Date.now() - lastInput < USER_INPUT_WINDOW
+            lastInput = 0
+            return allowed
+        }
         contents.setWindowOpenHandler(details => {
-            if (contents.getType() === "webview")
+            if (contents.getType() === "webview" && consumeInput())
                 openExternal(
                     details.url,
                     details.disposition === "background-tab"
@@ -67,44 +122,39 @@ export function setUtilsListeners(manager: WindowManager) {
         })
         contents.on("will-navigate", (event, url) => {
             event.preventDefault()
-            if (contents.getType() === "webview") openExternal(url)
+            if (contents.getType() === "webview" && consumeInput())
+                openExternal(url)
         })
     })
 
-    ipcMain.on("get-version", event => {
+    onIpc("get-version", event => {
         event.returnValue = app.getVersion()
     })
 
-    ipcMain.handle("open-external", (_, url: string, background: boolean) => {
+    handleIpc("open-external", (_, url: string, background: boolean) => {
         openExternal(url, background)
     })
 
-    ipcMain.handle(
-        "show-error-box",
-        async (_, title, content, copy?: string) => {
-            if (manager.hasWindow() && copy != null) {
-                const response = await dialog.showMessageBox(
-                    manager.mainWindow,
-                    {
-                        type: "error",
-                        title: title,
-                        message: title,
-                        detail: content,
-                        buttons: ["OK", copy],
-                        cancelId: 0,
-                        defaultId: 0,
-                    }
-                )
-                if (response.response === 1) {
-                    clipboard.writeText(`${title}: ${content}`)
-                }
-            } else {
-                dialog.showErrorBox(title, content)
+    handleIpc("show-error-box", async (_, title, content, copy?: string) => {
+        if (manager.hasWindow() && copy != null) {
+            const response = await dialog.showMessageBox(manager.mainWindow, {
+                type: "error",
+                title: title,
+                message: title,
+                detail: content,
+                buttons: ["OK", copy],
+                cancelId: 0,
+                defaultId: 0,
+            })
+            if (response.response === 1) {
+                clipboard.writeText(`${title}: ${content}`)
             }
+        } else {
+            dialog.showErrorBox(title, content)
         }
-    )
+    })
 
-    ipcMain.handle(
+    handleIpc(
         "show-message-box",
         async (_, title, message, confirm, cancel, defaultCancel, type) => {
             if (manager.hasWindow()) {
@@ -127,7 +177,7 @@ export function setUtilsListeners(manager: WindowManager) {
         }
     )
 
-    ipcMain.handle(
+    handleIpc(
         "show-save-dialog",
         async (_, filters: Electron.FileFilter[], path: string) => {
             ipcMain.removeAllListeners("write-save-result")
@@ -137,15 +187,11 @@ export function setUtilsListeners(manager: WindowManager) {
                     filters: filters,
                 })
                 if (!response.canceled) {
-                    ipcMain.handleOnce(
-                        "write-save-result",
-                        (_, result, errmsg) => {
-                            fs.writeFile(response.filePath, result, err => {
-                                if (err)
-                                    dialog.showErrorBox(errmsg, String(err))
-                            })
-                        }
-                    )
+                    handleIpcOnce("write-save-result", (_, result, errmsg) => {
+                        fs.writeFile(response.filePath, result, err => {
+                            if (err) dialog.showErrorBox(errmsg, String(err))
+                        })
+                    })
                     return true
                 }
             }
@@ -153,34 +199,31 @@ export function setUtilsListeners(manager: WindowManager) {
         }
     )
 
-    ipcMain.handle(
-        "show-open-dialog",
-        async (_, filters: Electron.FileFilter[]) => {
-            if (manager.hasWindow()) {
-                let response = await dialog.showOpenDialog(manager.mainWindow, {
-                    filters: filters,
-                    properties: ["openFile"],
-                })
-                if (!response.canceled) {
-                    try {
-                        return await fs.promises.readFile(
-                            response.filePaths[0],
-                            "utf-8"
-                        )
-                    } catch (err) {
-                        console.log(err)
-                    }
+    handleIpc("show-open-dialog", async (_, filters: Electron.FileFilter[]) => {
+        if (manager.hasWindow()) {
+            let response = await dialog.showOpenDialog(manager.mainWindow, {
+                filters: filters,
+                properties: ["openFile"],
+            })
+            if (!response.canceled) {
+                try {
+                    return await fs.promises.readFile(
+                        response.filePaths[0],
+                        "utf-8"
+                    )
+                } catch (err) {
+                    console.log(err)
                 }
             }
-            return null
         }
-    )
+        return null
+    })
 
-    ipcMain.handle("get-cache", async () => {
+    handleIpc("get-cache", async () => {
         return await session.defaultSession.getCacheSize()
     })
 
-    ipcMain.handle("clear-cache", async () => {
+    handleIpc("clear-cache", async () => {
         await session.defaultSession.clearCache()
     })
 
@@ -206,7 +249,7 @@ export function setUtilsListeners(manager: WindowManager) {
                 ) {
                     if (params.hasImageContents) {
                         ipcMain.removeHandler("image-callback")
-                        ipcMain.handleOnce(
+                        handleIpcOnce(
                             "image-callback",
                             (_, type: ImageCallbackTypes) => {
                                 switch (type) {
@@ -298,38 +341,38 @@ export function setUtilsListeners(manager: WindowManager) {
         }
     })
 
-    ipcMain.handle("write-clipboard", (_, text) => {
+    handleIpc("write-clipboard", (_, text) => {
         clipboard.writeText(text)
     })
 
-    ipcMain.handle("close-window", () => {
+    handleIpc("close-window", () => {
         if (manager.hasWindow()) manager.mainWindow.close()
     })
 
-    ipcMain.handle("minimize-window", () => {
+    handleIpc("minimize-window", () => {
         if (manager.hasWindow()) manager.mainWindow.minimize()
     })
 
-    ipcMain.handle("maximize-window", () => {
+    handleIpc("maximize-window", () => {
         manager.zoom()
     })
 
-    ipcMain.on("is-maximized", event => {
+    onIpc("is-maximized", event => {
         event.returnValue =
             Boolean(manager.mainWindow) && manager.mainWindow.isMaximized()
     })
 
-    ipcMain.on("is-focused", event => {
+    onIpc("is-focused", event => {
         event.returnValue =
             manager.hasWindow() && manager.mainWindow.isFocused()
     })
 
-    ipcMain.on("is-fullscreen", event => {
+    onIpc("is-fullscreen", event => {
         event.returnValue =
             manager.hasWindow() && manager.mainWindow.isFullScreen()
     })
 
-    ipcMain.handle("request-focus", () => {
+    handleIpc("request-focus", () => {
         if (manager.hasWindow()) {
             const win = manager.mainWindow
             if (win.isMinimized()) win.restore()
@@ -341,7 +384,7 @@ export function setUtilsListeners(manager: WindowManager) {
         }
     })
 
-    ipcMain.handle("request-attention", () => {
+    handleIpc("request-attention", () => {
         if (manager.hasWindow() && !manager.mainWindow.isFocused()) {
             if (process.platform === "win32") {
                 manager.mainWindow.flashFrame(true)
@@ -354,14 +397,16 @@ export function setUtilsListeners(manager: WindowManager) {
         }
     })
 
-    ipcMain.handle("touchbar-init", (_, texts: TouchBarTexts) => {
+    handleIpc("touchbar-init", (_, texts: TouchBarTexts) => {
         if (manager.hasWindow()) initMainTouchBar(texts, manager.mainWindow)
     })
-    ipcMain.handle("touchbar-destroy", () => {
+    handleIpc("touchbar-destroy", () => {
         if (manager.hasWindow()) manager.mainWindow.setTouchBar(null)
     })
 
-    ipcMain.handle("init-font-list", () => {
+    handleIpc("check-update", checkForUpdate)
+
+    handleIpc("init-font-list", () => {
         return fontList.getFonts({
             disableQuoting: true,
         })

@@ -1,21 +1,24 @@
 import Database from "better-sqlite3"
 import { drizzle } from "drizzle-orm/better-sqlite3"
 import { migrate } from "drizzle-orm/better-sqlite3/migrator"
-import { app, ipcMain, dialog, nativeTheme } from "electron"
+import { app, dialog, nativeTheme } from "electron"
 import * as fs from "node:fs"
 import * as path from "node:path"
 import type Store from "electron-store"
 import type { SchemaTypes, StoredRules } from "../schema-types"
-import { ThemeSettings } from "../schema-types"
+import { SyncService, ThemeSettings } from "../schema-types"
 import { sourcesTable, itemsTable } from "../db/schema"
 import * as schema from "../db/schema"
 import { WindowManager } from "./window"
+import { handleIpc } from "./ipc"
+import { getServiceConfigs, stripServiceSecrets } from "./settings"
 import performUpdate from "./update-scripts"
 import { transformLovefieldRules } from "./utils"
 import { getValidDate } from "../scripts/date"
 import type {
     DatabaseQuery,
     DatabaseResult,
+    ExportDialogTexts,
     RestoreDialogTexts,
 } from "../bridges/db"
 
@@ -24,6 +27,10 @@ let db: ReturnType<typeof drizzle>
 let storeRef: Store<SchemaTypes>
 let managerRef: WindowManager
 let restartFn: () => void
+
+// Drizzle only emits these. ATTACH, PRAGMA and VACUUM INTO can reach other files.
+const ALLOWED_SQL =
+    /^\s*(?:(?:select|insert|update|delete|with)\b|vacuum\s*;?\s*$)/i
 
 function optimizeDB() {
     try {
@@ -34,18 +41,37 @@ function optimizeDB() {
     }
 }
 
-async function handleExportAll() {
+async function handleExportAll(texts: ExportDialogTexts) {
     if (!managerRef.hasWindow()) return
     const result = await dialog.showSaveDialog(managerRef.mainWindow, {
         defaultPath: "Fluent_Reader_Backup.frdata",
         filters: [{ name: "Fluent Reader Data", extensions: ["frdata"] }],
     })
     if (result.canceled) return
+    let serviceConfigs = getServiceConfigs()
+    if (serviceConfigs.type !== SyncService.None) {
+        const { response } = await dialog.showMessageBox(
+            managerRef.mainWindow,
+            {
+                type: "warning",
+                title: texts.title,
+                message: texts.title,
+                detail: texts.message,
+                buttons: [texts.exclude, texts.include],
+                defaultId: 0,
+                cancelId: 0,
+            }
+        )
+        if (response !== 1) serviceConfigs = stripServiceSecrets(serviceConfigs)
+    }
     try {
         const sources = db.select().from(sourcesTable).all()
         const items = db.select().from(itemsTable).all()
+        // The encrypted form only opens on this machine, so backups never carry it.
+        const { serviceConfigsEncrypted: _, ...settings } = storeRef.store
         const output = {
-            ...storeRef.store,
+            ...settings,
+            serviceConfigs,
             sqlite: { sources, items },
         }
         fs.writeFileSync(result.filePath, JSON.stringify(output))
@@ -175,7 +201,16 @@ async function handleImportAll(texts: RestoreDialogTexts): Promise<boolean> {
 
     storeRef.clear()
     for (const [key, value] of Object.entries(configs)) {
-        if (["lovefield", "sqlite", "nedb", "useNeDB"].includes(key)) continue
+        if (
+            [
+                "lovefield",
+                "sqlite",
+                "nedb",
+                "useNeDB",
+                "serviceConfigsEncrypted",
+            ].includes(key)
+        )
+            continue
         storeRef.set(
             key as keyof SchemaTypes,
             value as SchemaTypes[keyof SchemaTypes]
@@ -253,6 +288,9 @@ export function initDB(
         params,
         method,
     }: DatabaseQuery): DatabaseResult => {
+        if (!ALLOWED_SQL.test(sql)) {
+            throw new Error("Blocked SQL statement from renderer")
+        }
         const stmt = sqlite.prepare(sql)
         if (method === "run") {
             const result = stmt.run(params)
@@ -269,7 +307,7 @@ export function initDB(
         return (stmt.all(params) as unknown[][]).map(convert)
     }
 
-    ipcMain.handle(
+    handleIpc(
         "db:execute",
         (
             _,
@@ -290,7 +328,7 @@ export function initDB(
     const executeBatch = sqlite.transaction((queries: DatabaseQuery[]) =>
         queries.map(executeQuery)
     )
-    ipcMain.handle("db:batch", (_, queries: DatabaseQuery[]) => {
+    handleIpc("db:batch", (_, queries: DatabaseQuery[]) => {
         try {
             const results = executeBatch(queries)
             optimizeDB()
@@ -301,8 +339,10 @@ export function initDB(
         }
     })
 
-    ipcMain.handle("db-export-all", handleExportAll)
-    ipcMain.handle("db-import-all", (_, texts: RestoreDialogTexts) =>
+    handleIpc("db-export-all", (_, texts: ExportDialogTexts) =>
+        handleExportAll(texts)
+    )
+    handleIpc("db-import-all", (_, texts: RestoreDialogTexts) =>
         handleImportAll(texts)
     )
 }

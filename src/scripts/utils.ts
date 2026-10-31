@@ -161,6 +161,28 @@ export const urlTest = (s: string) =>
         s
     )
 
+export async function confirmEndpointSecurity(endpoint: string) {
+    let url: URL
+    try {
+        url = new URL(endpoint.trim())
+    } catch {
+        return true
+    }
+    if (
+        url.protocol !== "http:" ||
+        ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname)
+    )
+        return true
+    return await window.utils.showMessageBox(
+        intl.get("service.insecureTitle"),
+        intl.get("service.insecureMessage"),
+        intl.get("service.insecureConfirm"),
+        intl.get("cancel"),
+        true,
+        "warning"
+    )
+}
+
 export const getWindowBreakpoint = () => window.innerWidth >= 1440
 
 export const cutText = (s: string, length: number) => {

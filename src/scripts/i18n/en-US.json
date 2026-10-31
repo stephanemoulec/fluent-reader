@@ -34,7 +34,8 @@
         "fetchSuccess": "Successfully fetched {count, plural, =1 {# article} other {# articles}}.",
         "networkError": "A network error has occurred.",
         "parseError": "An error has occurred when parsing the XML feed.",
-        "syncFailure": "Failed to sync with service"
+        "syncFailure": "Failed to sync with service",
+        "updateAvailable": "Update available: {version}"
     },
     "nav": {
         "menu": "Menu",
@@ -202,6 +203,9 @@
         "intro": "Sync across devices with RSS services.",
         "select": "Select a service",
         "suggest": "Suggest a new service",
+        "insecureTitle": "Connect without encryption?",
+        "insecureMessage": "This address uses HTTP, so your password or API key and your reading data can be read by anyone on the network. Use HTTPS if your service supports it.",
+        "insecureConfirm": "Connect anyway",
         "overwriteWarning": "Local sources will be deleted if they exist in the service.",
         "groupsWarning": "Groups aren't automatically synced with the service.",
         "rateLimitWarning": "To avoid rate limiting, you need to create your own API Key.",
@@ -228,6 +232,10 @@
         "deleteAll": "Delete all articles",
         "calculatingSize": "Calculating size...",
         "itemSize": "Around {size} of local storage is occupied by articles",
+        "exportCredentialsTitle": "Include sync credentials in this backup?",
+        "exportCredentialsMessage": "Backup files are not encrypted, so anyone with the file could read your password or API key. If you leave them out, you'll re-enter your password after restoring.",
+        "exportCredentialsExclude": "Leave out",
+        "exportCredentialsInclude": "Include",
         "confirmImport": "Do you really want to import data from the backup file? All current data will be wiped.",
         "data": "Application Data",
         "backup": "Backup",

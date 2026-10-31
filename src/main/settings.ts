@@ -14,8 +14,9 @@ import {
     ARTICLE_OVERLAY_MIN_WIDTH,
     LIST_VIEW_MIN_WIDTH,
 } from "../schema-types"
-import { ipcMain, session, nativeTheme, app } from "electron"
+import { session, nativeTheme, app, safeStorage } from "electron"
 import { WindowManager } from "./window"
+import { handleIpc, onIpc } from "./ipc"
 import { transformLovefieldRules } from "./utils"
 
 export const store = new Store<SchemaTypes>({ cache: true })
@@ -40,13 +41,13 @@ function allocateGroupId(): number {
     return gid
 }
 
-ipcMain.on("allocate-group-id", event => {
+onIpc("allocate-group-id", event => {
     event.returnValue = allocateGroupId()
 })
-ipcMain.handle("set-groups", (_, groups: SourceGroup[]) => {
+handleIpc("set-groups", (_, groups: SourceGroup[]) => {
     store.set(GROUPS_STORE_KEY, groups)
 })
-ipcMain.on("get-groups", event => {
+onIpc("get-groups", event => {
     const nextId = nextGroupId()
     if (store.get("nextGroupId", 0) < nextId) store.set("nextGroupId", nextId)
     const groups = store.get(GROUPS_STORE_KEY, []).map(group => ({ ...group }))
@@ -73,10 +74,10 @@ ipcMain.on("get-groups", event => {
 })
 
 const MENU_STORE_KEY = "menuOn"
-ipcMain.on("get-menu", event => {
+onIpc("get-menu", event => {
     event.returnValue = store.get(MENU_STORE_KEY, false)
 })
-ipcMain.handle("set-menu", (_, state: boolean) => {
+handleIpc("set-menu", (_, state: boolean) => {
     store.set(MENU_STORE_KEY, state)
 })
 
@@ -104,36 +105,36 @@ function setProxy(address = null) {
         session.fromPartition("sandbox").setProxy(rules)
     }
 }
-ipcMain.on("get-proxy-status", event => {
+onIpc("get-proxy-status", event => {
     event.returnValue = getProxyStatus()
 })
-ipcMain.on("toggle-proxy-status", () => {
+onIpc("toggle-proxy-status", () => {
     toggleProxyStatus()
 })
-ipcMain.on("get-proxy", event => {
+onIpc("get-proxy", event => {
     event.returnValue = getProxy()
 })
-ipcMain.handle("set-proxy", (_, address = null) => {
+handleIpc("set-proxy", (_, address = null) => {
     setProxy(address)
 })
 
 const VIEW_STORE_KEY = "view"
-ipcMain.on("get-view", event => {
+onIpc("get-view", event => {
     event.returnValue = store.get(VIEW_STORE_KEY, ViewType.Cards)
 })
-ipcMain.handle("set-view", (_, viewType: ViewType) => {
+handleIpc("set-view", (_, viewType: ViewType) => {
     store.set(VIEW_STORE_KEY, viewType)
 })
 
 const THEME_STORE_KEY = "theme"
-ipcMain.on("get-theme", event => {
+onIpc("get-theme", event => {
     event.returnValue = store.get(THEME_STORE_KEY, ThemeSettings.Default)
 })
-ipcMain.handle("set-theme", (_, theme: ThemeSettings) => {
+handleIpc("set-theme", (_, theme: ThemeSettings) => {
     store.set(THEME_STORE_KEY, theme)
     nativeTheme.themeSource = theme
 })
-ipcMain.on("get-theme-dark-color", event => {
+onIpc("get-theme-dark-color", event => {
     event.returnValue = nativeTheme.shouldUseDarkColors
 })
 export function setThemeListener(manager: WindowManager) {
@@ -149,34 +150,34 @@ export function setThemeListener(manager: WindowManager) {
 }
 
 const LOCALE_STORE_KEY = "locale"
-ipcMain.handle("set-locale", (_, option: string) => {
+handleIpc("set-locale", (_, option: string) => {
     store.set(LOCALE_STORE_KEY, option)
 })
 function getLocaleSettings() {
     return store.get(LOCALE_STORE_KEY, "default")
 }
-ipcMain.on("get-locale-settings", event => {
+onIpc("get-locale-settings", event => {
     event.returnValue = getLocaleSettings()
 })
-ipcMain.on("get-locale", event => {
+onIpc("get-locale", event => {
     let setting = getLocaleSettings()
     let locale = setting === "default" ? app.getLocale() : setting
     event.returnValue = locale
 })
 
 const FONT_SIZE_STORE_KEY = "fontSize"
-ipcMain.on("get-font-size", event => {
+onIpc("get-font-size", event => {
     event.returnValue = store.get(FONT_SIZE_STORE_KEY, 16)
 })
-ipcMain.handle("set-font-size", (_, size: number) => {
+handleIpc("set-font-size", (_, size: number) => {
     store.set(FONT_SIZE_STORE_KEY, size)
 })
 
 const FONT_STORE_KEY = "fontFamily"
-ipcMain.on("get-font", event => {
+onIpc("get-font", event => {
     event.returnValue = store.get(FONT_STORE_KEY, "")
 })
-ipcMain.handle("set-font", (_, font: string) => {
+handleIpc("set-font", (_, font: string) => {
     store.set(FONT_STORE_KEY, font)
 })
 
@@ -184,13 +185,13 @@ for (const [key, channel, minimum] of [
     ["articleOverlayWidth", "article-overlay-width", ARTICLE_OVERLAY_MIN_WIDTH],
     ["listViewWidth", "list-view-width", LIST_VIEW_MIN_WIDTH],
 ] as const) {
-    ipcMain.on(`get-${channel}`, event => {
+    onIpc(`get-${channel}`, event => {
         const width = store.get(key, minimum)
         event.returnValue = Number.isFinite(width)
             ? Math.max(minimum, Math.round(width))
             : minimum
     })
-    ipcMain.handle(`set-${channel}`, (_, width: number) => {
+    handleIpc(`set-${channel}`, (_, width: number) => {
         if (Number.isFinite(width) && width >= minimum) {
             store.set(key, Math.round(width))
         }
@@ -198,41 +199,95 @@ for (const [key, channel, minimum] of [
 }
 
 const FETCH_INTEVAL_STORE_KEY = "fetchInterval"
-ipcMain.on("get-fetch-interval", event => {
+onIpc("get-fetch-interval", event => {
     event.returnValue = store.get(FETCH_INTEVAL_STORE_KEY, 0)
 })
-ipcMain.handle("set-fetch-interval", (_, interval: number) => {
+handleIpc("set-fetch-interval", (_, interval: number) => {
     store.set(FETCH_INTEVAL_STORE_KEY, interval)
 })
 
 const SEARCH_ENGINE_STORE_KEY = "searchEngine"
-ipcMain.on("get-search-engine", event => {
+onIpc("get-search-engine", event => {
     event.returnValue = store.get(SEARCH_ENGINE_STORE_KEY, SearchEngines.Google)
 })
-ipcMain.handle("set-search-engine", (_, engine: SearchEngines) => {
+handleIpc("set-search-engine", (_, engine: SearchEngines) => {
     store.set(SEARCH_ENGINE_STORE_KEY, engine)
 })
 
 const SERVICE_CONFIGS_STORE_KEY = "serviceConfigs"
-ipcMain.on("get-service-configs", event => {
-    event.returnValue = store.get(SERVICE_CONFIGS_STORE_KEY, {
+const ENCRYPTED_CONFIGS_STORE_KEY = "serviceConfigsEncrypted"
+const SERVICE_SECRET_FIELDS = [
+    "password",
+    "apiKey",
+    "authKey",
+    "auth",
+    "inoreaderKey",
+]
+
+function canEncryptConfigs() {
+    return (
+        safeStorage.isEncryptionAvailable() &&
+        // Linux falls back to a hardcoded key without a system keyring.
+        (process.platform !== "linux" ||
+            safeStorage.getSelectedStorageBackend() !== "basic_text")
+    )
+}
+
+export function setServiceConfigs(configs: ServiceConfigs) {
+    if (canEncryptConfigs()) {
+        const encrypted = safeStorage.encryptString(JSON.stringify(configs))
+        store.set(ENCRYPTED_CONFIGS_STORE_KEY, encrypted.toString("base64"))
+        store.delete(SERVICE_CONFIGS_STORE_KEY)
+    } else {
+        store.set(SERVICE_CONFIGS_STORE_KEY, configs)
+        store.delete(ENCRYPTED_CONFIGS_STORE_KEY)
+    }
+}
+
+export function getServiceConfigs(): ServiceConfigs {
+    const encrypted = store.get(ENCRYPTED_CONFIGS_STORE_KEY)
+    if (encrypted) {
+        try {
+            return JSON.parse(
+                safeStorage.decryptString(Buffer.from(encrypted, "base64"))
+            )
+        } catch (err) {
+            // Keep the blob: the keyring may only be temporarily unavailable.
+            console.error("Failed to decrypt service configs:", err)
+            return { type: SyncService.None }
+        }
+    }
+    const configs = store.get(SERVICE_CONFIGS_STORE_KEY, {
         type: SyncService.None,
     })
+    // Upgrades and restored backups arrive here as plain text.
+    if (configs.type !== SyncService.None) setServiceConfigs(configs)
+    return configs
+}
+
+export function stripServiceSecrets(configs: ServiceConfigs): ServiceConfigs {
+    const stripped = { ...configs }
+    for (const field of SERVICE_SECRET_FIELDS) delete stripped[field]
+    return stripped
+}
+
+onIpc("get-service-configs", event => {
+    event.returnValue = getServiceConfigs()
 })
-ipcMain.handle("set-service-configs", (_, configs: ServiceConfigs) => {
-    store.set(SERVICE_CONFIGS_STORE_KEY, configs)
+handleIpc("set-service-configs", (_, configs: ServiceConfigs) => {
+    setServiceConfigs(configs)
 })
 
 const FILTER_TYPE_STORE_KEY = "filterType"
-ipcMain.on("get-filter-type", event => {
+onIpc("get-filter-type", event => {
     event.returnValue = store.get(FILTER_TYPE_STORE_KEY, null)
 })
-ipcMain.handle("set-filter-type", (_, filterType: number) => {
+handleIpc("set-filter-type", (_, filterType: number) => {
     store.set(FILTER_TYPE_STORE_KEY, filterType)
 })
 
 const LIST_CONFIGS_STORE_KEY = "listViewConfigs"
-ipcMain.on("get-view-configs", (event, view: ViewType) => {
+onIpc("get-view-configs", (event, view: ViewType) => {
     switch (view) {
         case ViewType.List:
             event.returnValue = store.get(
@@ -245,23 +300,20 @@ ipcMain.on("get-view-configs", (event, view: ViewType) => {
             break
     }
 })
-ipcMain.handle(
-    "set-view-configs",
-    (_, view: ViewType, configs: ViewConfigs) => {
-        switch (view) {
-            case ViewType.List:
-                store.set(LIST_CONFIGS_STORE_KEY, configs)
-                break
-        }
+handleIpc("set-view-configs", (_, view: ViewType, configs: ViewConfigs) => {
+    switch (view) {
+        case ViewType.List:
+            store.set(LIST_CONFIGS_STORE_KEY, configs)
+            break
     }
-)
+})
 
 const SOURCE_RULES_STORE_KEY = "sourceRules"
 
-ipcMain.on("get-all-rules", event => {
+onIpc("get-all-rules", event => {
     event.returnValue = store.get(SOURCE_RULES_STORE_KEY, {})
 })
-ipcMain.handle(
+handleIpc(
     "set-rules-for-target",
     (_, target: RuleTarget, rules: StoredRule[]) => {
         const key = getRuleTargetKey(target)
@@ -273,7 +325,7 @@ ipcMain.handle(
         store.set(SOURCE_RULES_STORE_KEY, allRules)
     }
 )
-ipcMain.handle(
+handleIpc(
     "migrate-lovefield-rules",
     (_, sources: Record<string, unknown>[]) => {
         store.set(SOURCE_RULES_STORE_KEY, transformLovefieldRules(sources))
@@ -281,20 +333,20 @@ ipcMain.handle(
 )
 
 const DB_VERSION_STORE_KEY = "dbVersion"
-ipcMain.on("get-db-version", event => {
+onIpc("get-db-version", event => {
     event.returnValue = store.get(
         DB_VERSION_STORE_KEY as keyof SchemaTypes,
         null
     )
 })
-ipcMain.handle("set-db-version", (_, version: string) => {
+handleIpc("set-db-version", (_, version: string) => {
     store.set(DB_VERSION_STORE_KEY as keyof SchemaTypes, version)
 })
 
 const UNREAD_SOURCES_ONLY_STORE_KEY = "menuUnreadSourcesOnly"
-ipcMain.on("get-unread-sources-only", event => {
+onIpc("get-unread-sources-only", event => {
     event.returnValue = store.get(UNREAD_SOURCES_ONLY_STORE_KEY, false)
 })
-ipcMain.handle("set-unread-sources-only", (_, flag: boolean) => {
+handleIpc("set-unread-sources-only", (_, flag: boolean) => {
     store.set(UNREAD_SOURCES_ONLY_STORE_KEY, flag)
 })

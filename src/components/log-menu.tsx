@@ -57,6 +57,17 @@ function LogMenu() {
                                                 {l.title}
                                             </Link>
                                         </b>
+                                    ) : l.url ? (
+                                        <b>
+                                            <Link
+                                                onClick={() =>
+                                                    window.utils.openExternal(
+                                                        l.url
+                                                    )
+                                                }>
+                                                {l.title}
+                                            </Link>
+                                        </b>
                                     ) : (
                                         <b>{l.title}</b>
                                     )

@@ -32,7 +32,12 @@ export function getCurrentLocale() {
 }
 
 export async function exportAll() {
-    await window.db.exportAll()
+    await window.db.exportAll({
+        title: intl.get("app.exportCredentialsTitle"),
+        message: intl.get("app.exportCredentialsMessage"),
+        exclude: intl.get("app.exportCredentialsExclude"),
+        include: intl.get("app.exportCredentialsInclude"),
+    })
 }
 
 export async function importAll(): Promise<boolean> {

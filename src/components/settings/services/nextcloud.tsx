@@ -17,7 +17,7 @@ import {
     IDropdownOption,
 } from "@fluentui/react"
 import DangerButton from "../../utils/danger-button"
-import { urlTest } from "../../../scripts/utils"
+import { confirmEndpointSecurity, urlTest } from "../../../scripts/utils"
 
 type NextcloudConfigsTabState = {
     existing: boolean
@@ -81,6 +81,7 @@ class NextcloudConfigsTab extends React.Component<
     }
 
     save = async () => {
+        if (!(await confirmEndpointSecurity(this.state.endpoint))) return
         let configs: NextcloudConfigs
         if (this.state.existing) {
             configs = {

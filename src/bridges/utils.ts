@@ -13,6 +13,10 @@ const utilsBridge = {
         return ipcRenderer.sendSync("get-version")
     },
 
+    checkForUpdate: (): Promise<{ version: string; url: string } | null> => {
+        return ipcRenderer.invoke("check-update")
+    },
+
     openExternal: (url: string, background = false) => {
         ipcRenderer.invoke("open-external", url, background)
     },
