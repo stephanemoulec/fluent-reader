@@ -30,8 +30,17 @@ getArticle(url).then(article => {
     let baseEl = dom.createElement('base')
     baseEl.setAttribute('href', url.split("/").slice(0, 3).join("/"))
     dom.head.append(baseEl)
-    for (let s of dom.getElementsByTagName("script")) {
-        s.parentNode.removeChild(s)
+    // Feed content is untrusted. <meta> refreshes would navigate without a click,
+    // and the CSP cannot block them.
+    for (let e of dom.body.querySelectorAll("script, noscript, meta, base, link")) {
+        e.remove()
+    }
+    // Omitting allow-popups and allow-top-navigation keeps embeds from opening
+    // the external browser. srcdoc would run same-origin under allow-same-origin.
+    for (let e of dom.querySelectorAll("iframe")) {
+        e.removeAttribute("srcdoc")
+        e.setAttribute("sandbox", "allow-scripts allow-same-origin allow-presentation")
+        e.setAttribute("allow", "fullscreen")
     }
     for (let e of dom.querySelectorAll("*[src]")) {
         e.src = e.src
@@ -40,6 +49,7 @@ getArticle(url).then(article => {
         e.href = e.href
     }
     let main = document.getElementById("main")
-    main.innerHTML = dom.body.innerHTML
+    // Move the sanitized nodes. Serializing and reparsing them could revive markup.
+    main.replaceChildren(...dom.body.childNodes)
     main.classList.add("show")
 })

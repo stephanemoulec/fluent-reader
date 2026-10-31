@@ -9,11 +9,20 @@ import { RSSItem } from "../../../scripts/models/item"
 import { SourceOpenTarget } from "../../../scripts/models/source"
 import { decodeFetchResponse } from "../../../scripts/utils"
 
-function initialView(itemId: number, openTarget: SourceOpenTarget) {
+function isWebLink(link: string) {
+    return link.startsWith("https://") || link.startsWith("http://")
+}
+
+function initialView(
+    itemId: number,
+    link: string,
+    openTarget: SourceOpenTarget
+) {
     return {
         itemId,
+        // Feeds choose the link, so only web pages may load in the guest.
         mode:
-            openTarget === SourceOpenTarget.External
+            openTarget === SourceOpenTarget.External || !isWebLink(link)
                 ? SourceOpenTarget.Local
                 : openTarget,
         fullContent: "",
@@ -31,14 +40,17 @@ function articleCard(itemId: number) {
 
 export function useArticleView(item: RSSItem, openTarget: SourceOpenTarget) {
     const itemId = item._id
-    const [view, setView] = useState(() => initialView(itemId, openTarget))
+    const [view, setView] = useState(() =>
+        initialView(itemId, item.link, openTarget)
+    )
     const articleRef = useRef<HTMLElement>(null)
     const webview = useRef<Electron.WebviewTag>(null)
     const refocusItemId = useRef(itemId)
 
     // Reset before committing a new article so it never mounts the previous mode
     // or displays full content fetched for the previous article.
-    if (view.itemId !== itemId) setView(initialView(itemId, openTarget))
+    if (view.itemId !== itemId)
+        setView(initialView(itemId, item.link, openTarget))
 
     const loadWebpage = view.mode === SourceOpenTarget.Webpage
     const loadFull = view.mode === SourceOpenTarget.FullContent
@@ -116,12 +128,13 @@ export function useArticleView(item: RSSItem, openTarget: SourceOpenTarget) {
         (mode: SourceOpenTarget) => {
             setView(view => {
                 if (view.mode === mode)
-                    return initialView(itemId, SourceOpenTarget.Local)
-                if (
-                    item.link.startsWith("https://") ||
-                    item.link.startsWith("http://")
-                )
-                    return initialView(itemId, mode)
+                    return initialView(
+                        itemId,
+                        item.link,
+                        SourceOpenTarget.Local
+                    )
+                if (isWebLink(item.link))
+                    return initialView(itemId, item.link, mode)
                 return view
             })
         },

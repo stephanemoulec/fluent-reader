@@ -15,7 +15,31 @@ const webviewInputFocused = `(() => {
     )
 })()`
 
+// Electron approves every permission request unless a session says otherwise.
+const GUEST_PERMISSIONS = new Set(["fullscreen", "clipboard-sanitized-write"])
+
+function isPermissionAllowed(
+    contents: Electron.WebContents | null,
+    permission: string
+) {
+    // Article notifications come from the app's own window, never from a guest.
+    if (permission === "notifications") return contents?.getType() === "window"
+    return GUEST_PERMISSIONS.has(permission)
+}
+
+export function setPermissionHandlers(target: Electron.Session) {
+    target.setPermissionRequestHandler((contents, permission, callback) => {
+        callback(isPermissionAllowed(contents, permission))
+    })
+    target.setPermissionCheckHandler((contents, permission) =>
+        isPermissionAllowed(contents, permission)
+    )
+}
+
 export function setUtilsListeners(manager: WindowManager) {
+    setPermissionHandlers(session.defaultSession)
+    setPermissionHandlers(session.fromPartition("sandbox"))
+
     async function openExternal(url: string, background = false) {
         if (url.startsWith("https://") || url.startsWith("http://")) {
             if (background && process.platform === "darwin") {
