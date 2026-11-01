@@ -18,6 +18,7 @@ import { CUSTOM_STYLE_HOOKS, createAppTheme } from "./utils/theme"
 import { CustomStyleHooksProvider_unstable as CustomStyleHooksProvider } from "@fluentui/react-shared-contexts"
 import { getFontFamilyForLocale } from "../scripts/settings"
 import { useArticleOverlayOpen } from "./utils/hooks/useArticleOverlayOpen"
+import { useGlobalShortcuts } from "./utils/hooks/useGlobalShortcuts"
 
 const useClasses = makeStyles({
     root: {
@@ -44,6 +45,7 @@ const Root: React.FC = () => {
     const dispatch = useAppDispatch()
     const locale = useAppSelector(s => s.app.locale)
     const articleOverlayOpen = useArticleOverlayOpen()
+    useGlobalShortcuts()
 
     const classes = useClasses()
     const [isDarkMode, setIsDarkMode] = useState(() =>

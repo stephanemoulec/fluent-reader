@@ -13,7 +13,6 @@ export namespace Card {
         filter: FeedFilter
         selected?: boolean
         viewConfigs?: ViewConfigs
-        shortcuts: (item: RSSItem, e: KeyboardEvent) => void
         markRead: (item: RSSItem) => void
         contextMenu: (feedId: string, item: RSSItem, e) => void
         showItem: (fid: string, item: RSSItem) => void
@@ -27,7 +26,6 @@ export namespace Card {
     export const bindEventsToProps = (props: Props) => ({
         onClick: (e: React.MouseEvent) => onClick(props, e),
         onMouseUp: (e: React.MouseEvent) => onMouseUp(props, e),
-        onKeyDown: (e: React.KeyboardEvent) => onKeyDown(props, e),
     })
 
     const onClick = (props: Props, e: React.MouseEvent) => {
@@ -56,9 +54,5 @@ export namespace Card {
             case 2:
                 props.contextMenu(props.feedId, props.item, e)
         }
-    }
-
-    const onKeyDown = (props: Props, e: React.KeyboardEvent) => {
-        props.shortcuts(props.item, e.nativeEvent)
     }
 }

@@ -32,6 +32,13 @@ function initialView(
     }
 }
 
+let fullContentRequest: number = null
+
+// Opens the next article in full content, whatever its source's default is.
+export function requestFullContent(itemId: number) {
+    fullContentRequest = itemId
+}
+
 function articleCard(itemId: number) {
     return document.querySelector<HTMLElement>(
         `#refocus div[data-iid="${itemId}"]`
@@ -40,8 +47,12 @@ function articleCard(itemId: number) {
 
 export function useArticleView(item: RSSItem, openTarget: SourceOpenTarget) {
     const itemId = item._id
+    const defaultTarget =
+        fullContentRequest === itemId
+            ? SourceOpenTarget.FullContent
+            : openTarget
     const [view, setView] = useState(() =>
-        initialView(itemId, item.link, openTarget)
+        initialView(itemId, item.link, defaultTarget)
     )
     const articleRef = useRef<HTMLElement>(null)
     const webview = useRef<Electron.WebviewTag>(null)
@@ -50,7 +61,11 @@ export function useArticleView(item: RSSItem, openTarget: SourceOpenTarget) {
     // Reset before committing a new article so it never mounts the previous mode
     // or displays full content fetched for the previous article.
     if (view.itemId !== itemId)
-        setView(initialView(itemId, item.link, openTarget))
+        setView(initialView(itemId, item.link, defaultTarget))
+
+    useEffect(() => {
+        fullContentRequest = null
+    }, [itemId])
 
     const loadWebpage = view.mode === SourceOpenTarget.Webpage
     const loadFull = view.mode === SourceOpenTarget.FullContent

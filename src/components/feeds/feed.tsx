@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useCallback } from "react"
-import { RSSItem, markRead, itemShortcuts } from "../../scripts/models/item"
+import { RSSItem, markRead } from "../../scripts/models/item"
 import { openItemMenu } from "../../scripts/models/app"
 import { RSSFeed, FeedFilter, loadMore } from "../../scripts/models/feed"
 import { showItem } from "../../scripts/models/page"
@@ -17,7 +17,6 @@ export type FeedProps = {
     currentItem: number
     sourceMap: Object
     filter: FeedFilter
-    shortcuts: (item: RSSItem, e: KeyboardEvent) => void
     markRead: (item: RSSItem) => void
     contextMenu: (feedId: string, item: RSSItem, e) => void
     loadMore: (feed: RSSFeed) => Promise<void>
@@ -41,10 +40,6 @@ export const Feed: React.FC<FeedOwnProps> = ({ feedId, viewType }) => {
     const viewConfigs = useAppSelector(s => s.page.viewConfigs)
     const currentItem = useAppSelector(s => s.page.itemId)
 
-    const handleShortcuts = useCallback(
-        (item: RSSItem, e: KeyboardEvent) => dispatch(itemShortcuts(item, e)),
-        []
-    )
     const handleMarkRead = useCallback(
         (item: RSSItem) => dispatch(markRead(item)),
         []
@@ -70,7 +65,6 @@ export const Feed: React.FC<FeedOwnProps> = ({ feedId, viewType }) => {
         currentItem,
         sourceMap,
         filter,
-        shortcuts: handleShortcuts,
         markRead: handleMarkRead,
         contextMenu: handleContextMenu,
         loadMore: handleLoadMore,

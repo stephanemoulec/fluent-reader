@@ -7,7 +7,6 @@ import {
     markUnread,
     toggleStarred,
     toggleHidden,
-    itemShortcuts,
 } from "../scripts/models/item"
 import {
     Stack,
@@ -34,6 +33,10 @@ import {
     closeContextMenu,
 } from "../scripts/models/app"
 import { useArticleView } from "./utils/hooks/useArticleView"
+import {
+    canHandleShortcut,
+    focusedCardId,
+} from "./utils/hooks/useGlobalShortcuts"
 import { makeStyles, mergeClasses, shorthands } from "@griffel/react"
 
 const useStyles = makeStyles({
@@ -101,6 +104,7 @@ const useStyles = makeStyles({
 })
 
 const FONT_SIZE_OPTIONS = [12, 13, 14, 15, 16, 17, 18, 19, 20]
+const DEFAULT_FONT_SIZE = 16
 
 type ArticleProps = Readonly<{
     itemId: number
@@ -164,49 +168,78 @@ function Article({ itemId, side = false }: ArticleProps) {
         return window.utils.addWebviewKeydownListener(input => {
             if (input.type !== "keyDown" || handleNavigationKey(input.key))
                 return
-            switch (input.key) {
+            // Shortcuts all listen on the document, so guest keys use that path too.
+            document.dispatchEvent(
+                new KeyboardEvent("keydown", {
+                    code: input.code,
+                    key: input.key,
+                    shiftKey: input.shift,
+                    altKey: input.alt,
+                    ctrlKey: input.control,
+                    metaKey: input.meta,
+                    repeat: input.isAutoRepeat,
+                    bubbles: true,
+                })
+            )
+        })
+    }, [handleNavigationKey])
+
+    const updateFontSize = useCallback((size: number) => {
+        window.settings.setFontSize(size)
+        setFontSize(size)
+    }, [])
+
+    useLayoutEffect(() => {
+        const listener = (e: KeyboardEvent) => {
+            if (!canHandleShortcut(e) || e.ctrlKey || e.altKey) return
+            if (e.key === "=" || e.key === "+" || e.key === "-") {
+                if (loadWebpage) return
+                const step = e.key === "-" ? -1 : 1
+                updateFontSize(
+                    Math.min(
+                        FONT_SIZE_OPTIONS[FONT_SIZE_OPTIONS.length - 1],
+                        Math.max(FONT_SIZE_OPTIONS[0], fontSize + step)
+                    )
+                )
+                e.preventDefault()
+                return
+            }
+            if (e.code === "Digit0" || e.code === "Numpad0") {
+                if (!loadWebpage && !e.shiftKey && !e.repeat) {
+                    updateFontSize(DEFAULT_FONT_SIZE)
+                    e.preventDefault()
+                }
+                return
+            }
+            const card = focusedCardId()
+            if (e.repeat || e.shiftKey || (card !== null && card !== itemId))
+                return
+            switch (e.key.toLowerCase()) {
                 case "l":
-                case "L":
                     toggleWebpage()
                     break
                 case "w":
-                case "W":
                     toggleFull()
                     break
                 case "h":
-                case "H":
-                    if (!input.meta) handleToggleHidden()
+                    handleToggleHidden()
                     break
-                default: {
-                    const event = new KeyboardEvent("keydown", {
-                        code: input.code,
-                        key: input.key,
-                        shiftKey: input.shift,
-                        altKey: input.alt,
-                        ctrlKey: input.control,
-                        metaKey: input.meta,
-                        repeat: input.isAutoRepeat,
-                        bubbles: true,
-                    })
-                    dispatch(itemShortcuts(item, event))
-                    document.dispatchEvent(event)
-                    break
-                }
+                default:
+                    return
             }
-        })
+            e.preventDefault()
+        }
+        document.addEventListener("keydown", listener)
+        return () => document.removeEventListener("keydown", listener)
     }, [
-        dispatch,
-        item,
+        itemId,
+        fontSize,
+        loadWebpage,
+        updateFontSize,
         toggleWebpage,
         toggleFull,
         handleToggleHidden,
-        handleNavigationKey,
     ])
-
-    const updateFontSize = (size: number) => {
-        window.settings.setFontSize(size)
-        setFontSize(size)
-    }
     const updateFont = (font: string) => {
         window.settings.setFont(font)
         setFontFamily(font)

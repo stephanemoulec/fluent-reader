@@ -512,6 +512,8 @@ export function itemShortcuts(item: RSSItem, e: KeyboardEvent): AppThunk {
                 break
             case "s":
             case "S":
+            case "f":
+            case "F":
                 dispatch(toggleStarred(item))
                 break
             case "h":
