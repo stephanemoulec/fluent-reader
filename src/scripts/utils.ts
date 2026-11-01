@@ -1,3 +1,5 @@
+import { fetchWithDeadline, readBoundedResponse } from "./network"
+import { compileRegex } from "../safe-regex"
 import intl from "react-intl-universal"
 import { ThunkAction, ThunkDispatch } from "redux-thunk"
 import { AnyAction } from "redux"
@@ -45,7 +47,7 @@ export type MyParserItem = extractGeneric<typeof rssParser> &
 const CHARSET_RE = /charset=([^()<>@,;:\"/[\]?.=\s]*)/i
 const XML_ENCODING_RE = /^<\?xml.+encoding="(.+?)".*?\?>/i
 export async function decodeFetchResponse(response: Response, isHTML = false) {
-    const buffer = await response.arrayBuffer()
+    const buffer = await readBoundedResponse(response)
     let ctype =
         response.headers.has("content-type") &&
         response.headers.get("content-type")
@@ -81,23 +83,20 @@ export async function decodeFetchResponse(response: Response, isHTML = false) {
 }
 
 export async function parseRSS(url: string) {
-    let result: Response
-    try {
-        result = await fetch(url, { credentials: "omit" })
-    } catch {
-        throw new Error(intl.get("log.networkError"))
-    }
-    if (result && result.ok) {
-        try {
-            return await rssParser.parseString(
-                await decodeFetchResponse(result)
-            )
-        } catch {
-            throw new Error(intl.get("log.parseError"))
-        }
-    } else {
-        throw new Error(result.status + " " + result.statusText)
-    }
+    return fetchWithDeadline(
+        url,
+        async response => {
+            if (!response.ok)
+                throw new Error(response.status + " " + response.statusText)
+            const content = await decodeFetchResponse(response)
+            try {
+                return await rssParser.parseString(content)
+            } catch {
+                throw new Error(intl.get("log.parseError"))
+            }
+        },
+        { credentials: "omit" }
+    )
 }
 
 export const domParser = new DOMParser()
@@ -243,9 +242,9 @@ export async function calculateItemSize(): Promise<number> {
     return result?.[0] ?? 0
 }
 
-export function validateRegex(regex: string, flags = ""): RegExp {
+export function validateRegex(regex: string, flags = "") {
     try {
-        return new RegExp(regex, flags)
+        return compileRegex(regex, flags)
     } catch {
         return null
     }

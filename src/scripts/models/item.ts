@@ -1,3 +1,4 @@
+import { forEachConcurrent } from "../network"
 import { getRulesForTarget } from "./rule"
 import { eq, and, lte, gte } from "drizzle-orm"
 import { database, itemsTable, itemsInSources } from "../db"
@@ -141,6 +142,7 @@ interface FetchItemsAction {
     type: typeof FETCH_ITEMS
     status: ActionStatus
     fetchCount?: number
+    continuing?: boolean
     items?: RSSItem[]
     itemState?: ItemState
     errSource?: RSSSource
@@ -192,13 +194,15 @@ export function fetchItemsRequest(fetchCount = 0): ItemActionTypes {
 
 export function fetchItemsSuccess(
     items: RSSItem[],
-    itemState: ItemState
+    itemState: ItemState,
+    continuing = false
 ): ItemActionTypes {
     return {
         type: FETCH_ITEMS,
         status: ActionStatus.Success,
         items: items,
         itemState: itemState,
+        continuing,
     }
 }
 
@@ -257,21 +261,32 @@ export async function insertItems(items: RSSItem[]): Promise<RSSItem[]> {
     return results.flat() as unknown as RSSItem[]
 }
 
+let localRefreshRunning = false
+
 export function fetchItems(
     background = false,
     sids: number[] = null
 ): AppThunk<Promise<void>> {
     return async (dispatch, getState) => {
-        let promises = new Array<Promise<RSSItem[]>>()
         const initState = getState()
-        if (!initState.app.fetchingItems && !initState.app.syncing) {
+        if (
+            localRefreshRunning ||
+            initState.app.fetchingItems ||
+            initState.app.syncing
+        )
+            return
+        localRefreshRunning = true
+        // Acquire the guard before awaiting service synchronization.
+        dispatch(fetchItemsRequest())
+        let insertedCount = 0
+        try {
             if (
                 sids === null ||
-                sids.filter(
-                    sid => initState.sources[sid].serviceRef !== undefined
-                ).length > 0
+                sids.some(sid => initState.sources[sid]?.serviceRef)
             )
                 await dispatch(syncWithService(background))
+            // Service sync dispatches its own success actions. Reacquire before
+            // starting the local refresh and retain it through incremental merges.
             let timenow = new Date().getTime()
             const sourcesState = getState().sources
             let sources =
@@ -287,89 +302,53 @@ export function fetchItems(
                       })
                     : sids
                           .map(sid => sourcesState[sid])
-                          .filter(s => !s.serviceRef)
-            for (let source of sources) {
-                const state = getState()
-                let promise = RSSSource.fetchItems(
-                    source,
-                    getRulesForTarget(state.rules, state.groups, {
-                        type: "source",
-                        sid: source.sid,
-                    })
-                )
-                promises.push(
-                    promise.finally(() => dispatch(fetchItemsIntermediate()))
-                )
-            }
-            dispatch(fetchItemsRequest(promises.length))
-            const results = await Promise.allSettled(promises)
-            return await new Promise<void>((resolve, reject) => {
-                let items = new Array<RSSItem>()
-                results.map((r, i) => {
-                    if (r.status === "fulfilled") items.push(...r.value)
-                    else {
-                        console.log(r.reason)
-                        dispatch(fetchItemsFailure(sources[i], r.reason))
+                          .filter(s => s && !s.serviceRef)
+            dispatch(fetchItemsRequest(sources.length))
+            await forEachConcurrent(sources, 4, async source => {
+                try {
+                    const state = getState()
+                    const items = await RSSSource.fetchItems(
+                        source,
+                        getRulesForTarget(state.rules, state.groups, {
+                            type: "source",
+                            sid: source.sid,
+                        })
+                    )
+                    if (!getState().sources[source.sid]) return
+                    // Persist a completed feed immediately, without retaining other feeds' results.
+                    const inserted = await insertItems(items)
+                    insertedCount += inserted.length
+                    dispatch(
+                        fetchItemsSuccess(
+                            inserted.reverse(),
+                            getState().items,
+                            true
+                        )
+                    )
+                    const current = getState().sources[source.sid]
+                    if (current)
+                        await dispatch(
+                            updateSource({
+                                ...current,
+                                lastFetched: new Date(),
+                            })
+                        )
+                    if (background) {
+                        for (const item of inserted)
+                            if (item.notify) dispatch(pushNotification(item))
                     }
-                })
-                insertItems(items)
-                    .then(async inserted => {
-                        const updates: Promise<void>[] = []
-                        for (let i = 0; i < results.length; i++) {
-                            if (results[i].status === "fulfilled") {
-                                const source =
-                                    getState().sources[sources[i].sid]
-                                if (source) {
-                                    updates.push(
-                                        dispatch(
-                                            updateSource({
-                                                ...source,
-                                                lastFetched: new Date(),
-                                            })
-                                        )
-                                    )
-                                }
-                            }
-                        }
-                        for (const update of await Promise.allSettled(
-                            updates
-                        )) {
-                            if (update.status === "rejected")
-                                console.log(update.reason)
-                        }
-                        dispatch(
-                            fetchItemsSuccess(
-                                inserted.reverse(),
-                                getState().items
-                            )
-                        )
-                        resolve()
-                        if (background) {
-                            for (let item of inserted) {
-                                if (item.notify) {
-                                    dispatch(pushNotification(item))
-                                }
-                            }
-                            if (inserted.length > 0) {
-                                window.utils.requestAttention()
-                            }
-                        } else {
-                            dispatch(dismissItems())
-                        }
-                        dispatch(setupAutoFetch())
-                    })
-                    .catch(err => {
-                        dispatch(fetchItemsSuccess([], getState().items))
-                        const cause =
-                            err instanceof Error && err.cause ? err.cause : err
-                        window.utils.showErrorBox(
-                            "A database error has occurred.",
-                            String(cause).slice(0, 2000)
-                        )
-                        console.log(err)
-                        reject(err)
-                    })
+                } catch (err) {
+                    dispatch(fetchItemsFailure(source, err))
+                } finally {
+                    dispatch(fetchItemsIntermediate())
+                }
             })
+            if (background && insertedCount > 0) window.utils.requestAttention()
+            else if (!background) dispatch(dismissItems())
+        } finally {
+            localRefreshRunning = false
+            dispatch(fetchItemsSuccess([], getState().items))
+            dispatch(setupAutoFetch())
         }
     }
 }

@@ -41,6 +41,16 @@ The repo of the mobile version of this app [can be found here](https://github.co
 
 Support for other RSS services are [under fundraising](https://github.com/yang991178/fluent-reader/issues/23). 
 
+## Search, credentials, and backups
+
+Search and article rules use linear-time regular expressions. Common patterns such as alternation, character classes, and repetition are supported; backreferences and lookaround are not. Expressions are limited to 4,096 characters. Existing rules using unsupported syntax need to be updated.
+
+Service logins are stored using the operating system's secure storage. On Linux, enable a system keyring to retain logins between sessions. When secure storage is unavailable, logins are kept only for the current session.
+
+New application backups omit service login details. Sign in again after restoring a backup, including a backup from an older release. Older backup files may still contain plaintext passwords or tokens.
+
+Feed refreshes process up to four feeds concurrently, with a 30-second deadline and a 10 MB response limit per feed. Successfully fetched feeds are saved as they finish.
+
 ## Development
 
 ### Contribute

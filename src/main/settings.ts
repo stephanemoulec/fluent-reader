@@ -14,9 +14,16 @@ import {
     ARTICLE_OVERLAY_MIN_WIDTH,
     LIST_VIEW_MIN_WIDTH,
 } from "../schema-types"
-import { ipcMain, session, nativeTheme, app } from "electron"
+import {
+    ipcMain,
+    session,
+    nativeTheme,
+    app,
+    safeStorage,
+    dialog,
+} from "electron"
 import { WindowManager } from "./window"
-import { transformLovefieldRules } from "./utils"
+import { transformLovefieldRules } from "../rules-migration"
 
 export const store = new Store<SchemaTypes>({ cache: true })
 
@@ -213,15 +220,80 @@ ipcMain.handle("set-search-engine", (_, engine: SearchEngines) => {
     store.set(SEARCH_ENGINE_STORE_KEY, engine)
 })
 
-const SERVICE_CONFIGS_STORE_KEY = "serviceConfigs"
+// Keep decrypted credentials in memory; only OS-encrypted data goes to disk.
+let serviceConfigsCache: ServiceConfigs
+let credentialsWarningShown = false
+function warnCredentials(message: string) {
+    if (credentialsWarningShown) return
+    credentialsWarningShown = true
+    dialog.showErrorBox("Service credentials", message)
+}
+function canEncryptCredentials() {
+    return (
+        safeStorage.isEncryptionAvailable() &&
+        (process.platform !== "linux" ||
+            safeStorage.getSelectedStorageBackend() !== "basic_text")
+    )
+}
+function saveServiceCredentials(configs: ServiceConfigs) {
+    let encrypted: string
+    if (configs.type !== SyncService.None && canEncryptCredentials()) {
+        try {
+            encrypted = safeStorage
+                .encryptString(JSON.stringify(configs))
+                .toString("base64")
+        } catch {
+            // A keyring can become unavailable after the readiness check.
+        }
+    }
+    if (encrypted) store.set("encryptedServiceConfigs", encrypted)
+    else {
+        store.delete("encryptedServiceConfigs")
+        if (configs.type !== SyncService.None)
+            warnCredentials(
+                "Secure credential storage is unavailable. Your service login will work for this session, but you will need to sign in again after restarting. Enable your system keyring to save it securely."
+            )
+    }
+    serviceConfigsCache = configs
+    store.delete("serviceConfigs")
+}
+
+function getServiceCredentials(): ServiceConfigs {
+    if (serviceConfigsCache) return serviceConfigsCache
+    const encrypted = store.get("encryptedServiceConfigs")
+    if (encrypted) {
+        // Recover a crash between saving ciphertext and removing the legacy key.
+        store.delete("serviceConfigs")
+        try {
+            serviceConfigsCache = JSON.parse(
+                safeStorage.decryptString(Buffer.from(encrypted, "base64"))
+            )
+            return serviceConfigsCache
+        } catch {
+            warnCredentials(
+                "Saved service credentials could not be unlocked. Unlock your system keyring and restart, or sign in again in service settings."
+            )
+            return { type: SyncService.None }
+        }
+    }
+    const legacy = store.get("serviceConfigs", { type: SyncService.None })
+    saveServiceCredentials(legacy)
+    return serviceConfigsCache
+}
+// Migrate old plaintext settings as soon as the OS key store is available.
+app.whenReady().then(getServiceCredentials)
 ipcMain.on("get-service-configs", event => {
-    event.returnValue = store.get(SERVICE_CONFIGS_STORE_KEY, {
-        type: SyncService.None,
-    })
+    event.returnValue = getServiceCredentials()
 })
 ipcMain.handle("set-service-configs", (_, configs: ServiceConfigs) => {
-    store.set(SERVICE_CONFIGS_STORE_KEY, configs)
+    saveServiceCredentials(configs)
 })
+
+export function clearServiceCredentials() {
+    serviceConfigsCache = undefined
+    store.delete("serviceConfigs")
+    store.delete("encryptedServiceConfigs")
+}
 
 const FILTER_TYPE_STORE_KEY = "filterType"
 ipcMain.on("get-filter-type", event => {

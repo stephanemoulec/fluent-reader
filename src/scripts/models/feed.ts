@@ -1,3 +1,4 @@
+import { compileRegex } from "../../safe-regex"
 import { database, itemsTable, itemsInSources } from "../db"
 import { and, eq, desc, sql } from "drizzle-orm"
 import {
@@ -55,7 +56,13 @@ export class FeedFilter {
         if (!(type & FilterType.ShowHidden)) flag = flag && !item.hidden
         if (filter.search !== "") {
             const flags = type & FilterType.CaseInsensitive ? "i" : ""
-            const regex = RegExp(filter.search, flags)
+            const regex = (() => {
+                try {
+                    return compileRegex(filter.search, flags)
+                } catch {
+                    return { test: (_: string) => false }
+                }
+            })()
             if (type & FilterType.FullSearch) {
                 flag =
                     flag && (regex.test(item.title) || regex.test(item.snippet))

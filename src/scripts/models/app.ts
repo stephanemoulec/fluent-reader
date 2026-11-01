@@ -556,8 +556,10 @@ export function appReducer(
                 case ActionStatus.Success:
                     return {
                         ...state,
-                        fetchingItems: false,
-                        fetchingTotal: 0,
+                        fetchingItems: Boolean(action.continuing),
+                        fetchingTotal: action.continuing
+                            ? state.fetchingTotal
+                            : 0,
                         logMenu:
                             action.items.length == 0
                                 ? state.logMenu

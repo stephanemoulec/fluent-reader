@@ -130,6 +130,7 @@ export type SchemaTypes = {
     fetchInterval: number
     searchEngine: SearchEngines
     serviceConfigs: ServiceConfigs
+    encryptedServiceConfigs: string
     filterType: number
     listViewConfigs: ViewConfigs
     menuUnreadSourcesOnly: boolean
