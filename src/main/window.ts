@@ -44,11 +44,11 @@ export class WindowManager {
                     process.platform === "darwin"
                         ? "#00000000"
                         : nativeTheme.shouldUseDarkColors
-                        ? "#282828"
-                        : "#faf9f8",
+                        ? "#201e1b"
+                        : "#f5f3ef",
                 vibrancy: "sidebar",
-                width: 1200,
-                height: 700,
+                width: 1280,
+                height: 800,
                 minWidth: 992,
                 minHeight: 600,
                 frame: process.platform === "darwin",
@@ -68,7 +68,11 @@ export class WindowManager {
             this.mainWindow.on("ready-to-show", () => {
                 this.mainWindow.show()
                 this.mainWindow.focus()
-                if (!app.isPackaged) this.mainWindow.webContents.openDevTools()
+                // Docked DevTools would squeeze the window below the docked layout.
+                if (!app.isPackaged)
+                    this.mainWindow.webContents.openDevTools({
+                        mode: "detach",
+                    })
             })
             this.mainWindow.loadFile(
                 (app.isPackaged ? "dist/" : "") + "index.html"

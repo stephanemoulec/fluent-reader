@@ -7,6 +7,7 @@ import { makeStyles, mergeClasses, shorthands } from "@griffel/react"
 import { useAppDispatch, useAppSelector } from "../../scripts/reducer"
 import { validateRegex } from "../../scripts/utils"
 import { performSearch } from "../../scripts/models/page"
+import { MENU_WIDTH, WIDE_SCREEN_QUERY } from "../../schema-types"
 
 const useStyles = makeStyles({
     root: {
@@ -43,18 +44,18 @@ const useStyles = makeStyles({
         },
     },
     floatingMenu: {
-        "@media (min-width: 1440px)": {
-            left: "280px",
-            maxWidth: "calc(100% - 728px)",
+        [WIDE_SCREEN_QUERY]: {
+            left: `${MENU_WIDTH}px`,
+            maxWidth: `calc(100% - ${MENU_WIDTH + 448}px)`,
         },
     },
     floatingDarwinMenu: {
-        "@media (min-width: 1440px)": {
-            "left": "280px",
-            "maxWidth": "calc(100% - 556px)",
+        [WIDE_SCREEN_QUERY]: {
+            "left": `${MENU_WIDTH}px`,
+            "maxWidth": `calc(100% - ${MENU_WIDTH + 276}px)`,
             "&:is(body.not-fullscreen *)": {
-                left: "280px",
-                maxWidth: "calc(100% - 556px)",
+                left: `${MENU_WIDTH}px`,
+                maxWidth: `calc(100% - ${MENU_WIDTH + 276}px)`,
             },
         },
     },

@@ -1,7 +1,7 @@
 import * as React from "react"
 import { useMemo, useCallback, useEffect, useRef, useState } from "react"
 import intl from "react-intl-universal"
-import { SourceGroup } from "../schema-types"
+import { MENU_WIDTH, SourceGroup, WIDE_SCREEN_QUERY } from "../schema-types"
 import { RSSSource } from "../scripts/models/source"
 import { ALL, initFeeds } from "../scripts/models/feed"
 import { useAppSelector, useAppDispatch } from "../scripts/reducer"
@@ -51,18 +51,28 @@ const useMenuClasses = makeStyles({
         flexDirection: "row-reverse",
     },
     menuHeader: {
+        flexShrink: 0,
         height: "var(--navHeight)",
     },
+    menuTitle: {
+        flexShrink: 0,
+        padding: "4px 18px 12px",
+        fontSize: "22px",
+        lineHeight: "28px",
+        fontWeight: 700,
+        color: "var(--neutralDark)",
+        userSelect: "none",
+    },
     menuContainer: {
-        "position": "fixed",
-        "zIndex": 5,
-        "left": 0,
-        "top": 0,
-        "width": "100%",
-        "height": "100%",
-        "pointerEvents": "none",
-        "@media (min-width: 1440px)": {
-            width: "280px !important",
+        position: "fixed",
+        zIndex: 5,
+        left: 0,
+        top: 0,
+        width: "100%",
+        height: "100%",
+        pointerEvents: "none",
+        [WIDE_SCREEN_QUERY]: {
+            width: `${MENU_WIDTH}px !important`,
             background: "none",
             backdropFilter: "none",
         },
@@ -74,54 +84,46 @@ const useMenuClasses = makeStyles({
         filter: "var(--blur)",
     },
     menuInner: {
-        "position": "absolute",
-        "left": 0,
-        "top": 0,
-        "width": "280px",
-        "height": "100%",
-        "backgroundColor": "var(--neutralLighterAltOpacity)",
-        "backdropFilter": "var(--blur)",
-        "boxShadow": "5px 0 25px #0004",
-        "transition":
+        position: "absolute",
+        left: 0,
+        top: 0,
+        width: `${MENU_WIDTH}px`,
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        backgroundColor: "var(--paneSidebar)",
+        boxShadow: "5px 0 25px #0004",
+        transition:
             "clip-path var(--transition-timing) 0.367s, opacity cubic-bezier(0, 0, 0.2, 1) 0.367s",
-        "clipPath": "inset(0 100% 0 0)",
-        "opacity": 0,
-        "@media (min-width: 1440px)": {
-            "backgroundColor": "var(--neutralLight)",
-            "boxShadow": "none",
-            "::after": {
-                content: '""',
-                display: "block",
-                pointerEvents: "none",
-                position: "absolute",
-                top: "-10%",
-                right: 0,
-                width: "120%",
-                height: "120%",
-                boxShadow: "inset 5px 0 25px #0004",
-            },
+        clipPath: "inset(0 100% 0 0)",
+        opacity: 0,
+        [WIDE_SCREEN_QUERY]: {
+            boxShadow: "none",
         },
     },
     menuInnerShow: {
-        "clipPath": "inset(0 -50px 0 0)",
-        "opacity": 1,
-        "@media (min-width: 1440px)": {
+        clipPath: "inset(0 -50px 0 0)",
+        opacity: 1,
+        [WIDE_SCREEN_QUERY]: {
             clipPath: "inset(0)",
         },
     },
     menuInnerDarwin: {
-        "@media (min-width: 1440px)": {
+        [WIDE_SCREEN_QUERY]: {
             background: "none",
         },
     },
     navWrapper: {
-        maxHeight: "calc(100% - var(--navHeight))",
+        flexGrow: 1,
+        minHeight: 0,
         overflowX: "hidden",
         overflowY: "auto",
     },
     tree: {
         paddingTop: 0,
-        paddingBottom: 0,
+        paddingBottom: "12px",
+        paddingLeft: "8px",
+        paddingRight: "8px",
     },
     subsHeaderStack: {
         marginTop: "16px",
@@ -311,6 +313,7 @@ export const Menu: React.FC = () => {
                             </FlatButtonGroup>
                         )}
                     </div>
+                    <div className={menuClasses.menuTitle}>Fluent Reader</div>
                     <div className={menuClasses.navWrapper}>
                         <Tree
                             ref={treeRef}
@@ -450,7 +453,8 @@ export const Menu: React.FC = () => {
 
 const useTreeItemClasses = makeStyles({
     treeItem: {
-        minHeight: "32px",
+        minHeight: "30px",
+        borderRadius: "8px",
     },
     treeLeafItem: {
         paddingLeft: "12px",
@@ -459,15 +463,8 @@ const useTreeItemClasses = makeStyles({
         paddingLeft: "24px",
     },
     selectedItem: {
-        "::after": {
-            content: '""',
-            position: "absolute",
-            left: 0,
-            top: "4px",
-            width: "4px",
-            height: "24px",
-            borderRadius: tokens.borderRadiusCircular,
-            backgroundColor: tokens.colorCompoundBrandForeground1,
+        "&&": {
+            backgroundColor: "var(--selection)",
         },
     },
     selectedItemText: {

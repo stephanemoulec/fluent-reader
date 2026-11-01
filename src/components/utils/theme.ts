@@ -1,5 +1,8 @@
 import {
+    BrandVariants,
     ButtonState,
+    createDarkTheme,
+    createLightTheme,
     FieldState,
     LabelState,
     makeStyles,
@@ -9,22 +12,43 @@ import {
     Theme,
     tokens,
     TreeItemLayoutState,
-    webDarkTheme,
-    webLightTheme,
 } from "@fluentui/react-components"
-import { brandWeb, createV8Theme } from "@fluentui/react-migration-v8-v9"
+import { createV8Theme } from "@fluentui/react-migration-v8-v9"
 import { ITheme } from "@fluentui/react"
 import { CustomStyleHooksContextValue_unstable } from "@fluentui/react-shared-contexts"
 
+const brand: BrandVariants = {
+    10: "#02161a",
+    20: "#052329",
+    30: "#083038",
+    40: "#0b3d46",
+    50: "#0e4a55",
+    60: "#115763",
+    70: "#136170",
+    80: "#156b78",
+    90: "#2a7a87",
+    100: "#438996",
+    110: "#5f99a5",
+    120: "#7ca9b4",
+    130: "#99bac3",
+    140: "#b6ccd3",
+    150: "#d2e0e4",
+    160: "#edf3f5",
+}
+
+const READER_LIGHT = "#fbfaf7"
+const READER_DARK = "#262421"
+
 export const customLightTheme: Theme = {
-    ...webLightTheme,
+    ...createLightTheme(brand),
+    colorNeutralBackground1: READER_LIGHT,
     colorSubtleBackgroundLightAlphaHover: "#0001",
     colorSubtleBackgroundLightAlphaPressed: "#0002",
 }
 
 export const customDarkTheme: Theme = {
-    ...webDarkTheme,
-    colorNeutralBackground1: "#1f1f1f",
+    ...createDarkTheme(brand),
+    colorNeutralBackground1: READER_DARK,
     colorSubtleBackgroundLightAlphaHover: "#fff1",
     colorSubtleBackgroundLightAlphaPressed: "#fff1",
 }
@@ -43,17 +67,15 @@ export function createAppTheme(
         ...baseTheme,
         fontFamilyBase: fontFamily,
     }
-    const baseV8Theme = createV8Theme(brandWeb, v9Theme, isDarkTheme)
-    const v8Theme: ITheme = isDarkTheme
-        ? {
-              ...baseV8Theme,
-              palette: {
-                  ...baseV8Theme.palette,
-                  white: "#1f1f1f",
-                  black: "#f8f8f8",
-              },
-          }
-        : baseV8Theme
+    const baseV8Theme = createV8Theme(brand, v9Theme, isDarkTheme)
+    const v8Theme: ITheme = {
+        ...baseV8Theme,
+        palette: {
+            ...baseV8Theme.palette,
+            white: isDarkTheme ? READER_DARK : READER_LIGHT,
+            ...(isDarkTheme ? { black: "#f5f2ec" } : {}),
+        },
+    }
     return {
         v8Theme,
         v9Theme,

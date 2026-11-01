@@ -45,7 +45,7 @@
     height: 6px;
     margin: 5px;
     border-radius: 3px;
-    background-color: #ffaa44;
+    background-color: var(--primary);
     font-size: 10px;
     box-sizing: border-box;
 }
@@ -182,40 +182,45 @@
 
 .list-card {
     display: flex;
-    transition: box-shadow linear 0.08s;
-    border-bottom: 1px solid var(--neutralQuaternaryAlt);
-    box-shadow: #0000 0 5px 15px;
+    margin: 0 0 2px 8px;
+    border-radius: 10px;
+    transition: background-color linear 0.08s;
 }
 .list-card:hover,
 .ms-Fabric--isFocusVisible .list-card:focus {
-    box-shadow: #0004 0 5px 15px;
+    background-color: var(--hover);
 }
-.list-card:active {
-    box-shadow: #0000 0 5px 15px, inset #0004 0 0 15px;
+.list-card:active,
+.list-card.selected {
+    background-color: var(--selection);
 }
 .list-card div.head {
-    width: 80px;
-    height: 80px;
-    margin: 8px 0 8px 10px;
+    order: 1;
+    flex-shrink: 0;
+    width: 64px;
+    height: 64px;
+    margin: 10px 10px 10px 0;
 }
 .list-card div.head img {
-    width: 80px;
-    height: 80px;
+    width: 64px;
+    height: 64px;
+    border-radius: 8px;
     object-fit: cover;
     -webkit-user-drag: none;
 }
 .list-card .data {
     flex-grow: 1;
-    margin: 8px 10px;
-    overflow: hidden;
+    min-width: 0;
+    margin: 10px;
 }
 .list-card .info {
-    margin: 0 0 8px;
+    margin: 0 0 3px;
     height: 16px;
+    color: var(--neutralSecondaryAlt);
 }
 .list-card h3.title {
     font-size: 14px;
-    line-height: 18px;
+    line-height: 19px;
     font-weight: 600;
     margin: 0;
     position: relative;
@@ -225,25 +230,21 @@
     -webkit-box-orient: vertical;
 }
 .list-card p.snippet {
-    color: var(--neutralSecondary);
+    color: var(--neutralSecondaryAlt);
     font-size: 12px;
     line-height: 16px;
-    margin: 4px 0 0;
-    -webkit-line-clamp: 2;
+    margin: 3px 0 0;
+    -webkit-line-clamp: 1;
     overflow: hidden;
     display: -webkit-box;
     -webkit-box-orient: vertical;
 }
-.list-card.selected::before {
-    content: "";
-    display: block;
-    position: absolute;
-    height: 100%;
-    border-left: 2px solid var(--primary);
-}
 .list-card.read,
 .list-card.read p.snippet {
     color: var(--neutralSecondaryAlt);
+}
+.ms-Fabric--isFocusVisible .list-card:focus::after {
+    border-radius: 8px;
 }
 
 .magazine-card {

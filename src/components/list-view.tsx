@@ -2,14 +2,19 @@ import * as React from "react"
 import { CSSProperties, useLayoutEffect, useRef, useState } from "react"
 import { makeStyles, mergeClasses } from "@griffel/react"
 import { useTheme } from "@fluentui/react"
+import intl from "react-intl-universal"
 import {
     LIST_ARTICLE_MIN_WIDTH,
     LIST_VIEW_MIN_WIDTH,
+    MENU_WIDTH,
     ViewType,
+    WIDE_SCREEN_QUERY,
 } from "../schema-types"
+import { useAppSelector } from "../scripts/reducer"
 import Article from "./article"
 import { Feed } from "./feeds/feed"
 import ArticleSearch from "./utils/article-search"
+import { FilterPill } from "./utils/FilterPill"
 import { ResizeHandle } from "./utils/ResizeHandle"
 import { useResizableWidth } from "./utils/hooks/useResizableWidth"
 
@@ -28,32 +33,41 @@ const useStyles = makeStyles({
         backgroundColor: "var(--colorNeutralBackground1)",
     },
     menuOpen: {
-        "@media (min-width: 1440px)": {
-            marginLeft: "280px",
+        [WIDE_SCREEN_QUERY]: {
+            marginLeft: `${MENU_WIDTH}px`,
         },
     },
     listPane: {
-        "width": "var(--list-view-width)",
-        "minWidth": `${LIST_VIEW_MIN_WIDTH}px`,
-        "flexShrink": 0,
-        "backgroundColor": "var(--neutralLighterAlt)",
-        "height": "100%",
-        "position": "relative",
-        "display": "flex",
-        "flexDirection": "column",
-        "paddingTop": "var(--navHeight)",
-        "boxSizing": "border-box",
-        "::after": {
-            content: '""',
-            display: "block",
-            pointerEvents: "none",
-            position: "absolute",
-            top: "-10%",
-            right: 0,
-            width: "120%",
-            height: "120%",
-            boxShadow: "inset 5px 0 25px #0004",
-        },
+        width: "var(--list-view-width)",
+        minWidth: `${LIST_VIEW_MIN_WIDTH}px`,
+        flexShrink: 0,
+        backgroundColor: "var(--neutralLighterAlt)",
+        height: "100%",
+        position: "relative",
+        display: "flex",
+        flexDirection: "column",
+        paddingTop: "var(--navHeight)",
+        boxSizing: "border-box",
+    },
+    listHeader: {
+        flexShrink: 0,
+        padding: "4px 18px 10px",
+        userSelect: "none",
+    },
+    listTitle: {
+        fontSize: "22px",
+        lineHeight: "28px",
+        fontWeight: 700,
+        color: "var(--neutralDark)",
+        overflow: "hidden",
+        whiteSpace: "nowrap",
+        textOverflow: "ellipsis",
+    },
+    listSubtitle: {
+        fontSize: "12px",
+        lineHeight: "16px",
+        minHeight: "16px",
+        color: "var(--neutralSecondaryAlt)",
     },
     articlePane: {
         flexGrow: 1,
@@ -64,16 +78,6 @@ const useStyles = makeStyles({
         boxSizing: "border-box",
         backgroundColor: "var(--colorNeutralBackground1)",
         position: "relative",
-    },
-    paneHeader: {
-        "::before": {
-            content: '""',
-            display: "block",
-            width: "100%",
-            borderBottom: "1px solid var(--neutralQuaternaryAlt)",
-            position: "absolute",
-            top: "calc(var(--navHeight) - 1px)",
-        },
     },
     feed: {
         "flexGrow": 1,
@@ -98,6 +102,11 @@ const useStyles = makeStyles({
         width: "120px",
         height: "120px",
         userSelect: "none",
+        // The logo's opaque backdrop must not show on the tinted pane.
+        mixBlendMode: "multiply",
+    },
+    logoDark: {
+        mixBlendMode: "screen",
     },
 })
 
@@ -113,6 +122,13 @@ export function ListView({
     const classes = useStyles()
     const theme = useTheme()
     const container = useRef<HTMLDivElement>(null)
+    const title = useAppSelector(s => s.app.title)
+    const unreadCount = useAppSelector(s =>
+        (s.feeds[feedId]?.sids ?? []).reduce(
+            (total, sid) => total + (s.sources[sid]?.unreadCount ?? 0),
+            0
+        )
+    )
     const [availableWidth, setAvailableWidth] = useState(0)
     const { requestedWidth, handleProps } = useResizableWidth({
         getWidth: window.settings.getListViewWidth,
@@ -148,9 +164,17 @@ export function ListView({
             <div
                 className={mergeClasses(
                     "list-feed-container",
-                    classes.listPane,
-                    classes.paneHeader
+                    classes.listPane
                 )}>
+                <div className={classes.listHeader}>
+                    <div className={classes.listTitle}>{title}</div>
+                    <div className={classes.listSubtitle}>
+                        {unreadCount > 0 &&
+                            intl.get("list.unreadCount", {
+                                count: unreadCount,
+                            })}
+                    </div>
+                </div>
                 <ArticleSearch inline />
                 <div className={classes.feed}>
                     <Feed
@@ -159,6 +183,7 @@ export function ListView({
                         key={feedId}
                     />
                 </div>
+                <FilterPill />
                 <ResizeHandle
                     label="Resize article list"
                     cursor="col-resize"
@@ -170,8 +195,7 @@ export function ListView({
                 <div
                     className={mergeClasses(
                         "side-article-wrapper",
-                        classes.articlePane,
-                        classes.paneHeader
+                        classes.articlePane
                     )}>
                     <Article itemId={itemId} side />
                 </div>
@@ -183,7 +207,10 @@ export function ListView({
                         classes.logoPane
                     )}>
                     <img
-                        className={classes.logo}
+                        className={mergeClasses(
+                            classes.logo,
+                            theme.isInverted && classes.logoDark
+                        )}
                         src={
                             theme.isInverted
                                 ? "icons/logo-outline-dark.svg"

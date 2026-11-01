@@ -6,7 +6,7 @@ body {
     font-family: "Segoe UI", "Source Han Sans Regular", sans-serif;
 }
 body {
-    padding: 12px 96px 32px;
+    padding: 24px clamp(24px, 7vw, 72px) 48px;
     overflow: hidden scroll;
 }
 body.rtl {
@@ -20,16 +20,19 @@ body.vertical {
 }
 
 :root {
-    --gray: #484644;
-    --primary: #0f6cbd;
-    --primary-alt: #115ea3;
+    color: #3e3b37;
+    --heading: #2a2825;
+    --gray: #77726a;
+    --primary: #156b78;
+    --primary-alt: #0e4a55;
 }
 @media (prefers-color-scheme: dark) {
     :root {
-        color: #f8f8f8;
-        --gray: #a19f9d;
-        --primary: #479ef5;
-        --primary-alt: #62abf5;
+        color: #dad6ce;
+        --heading: #f5f2ec;
+        --gray: #a8a298;
+        --primary: #6fb0bc;
+        --primary-alt: #99bac3;
     }
 }
 
@@ -82,18 +85,25 @@ body.vertical #main {
 }
 
 #main > p.title {
-    font-size: 1.25rem;
-    line-height: 1.75rem;
-    font-weight: 600;
-    margin-block-end: 0;
+    color: var(--heading);
+    font-size: 2rem;
+    line-height: 1.15;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin-block: 0.25rem;
 }
-#main > p.date {
+#main > p.date,
+#main > p.byline {
     color: var(--gray);
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
+    margin-block: 0;
+}
+#main > p.byline {
+    margin-block-end: 1.75rem;
 }
 
 article {
-    line-height: 1.6;
+    line-height: 1.65;
 }
 body.vertical article {
     line-height: 1.5;
@@ -106,6 +116,7 @@ article * {
 }
 article img {
     height: auto;
+    border-radius: 8px;
 }
 body.vertical article img {
     max-height: 75%;

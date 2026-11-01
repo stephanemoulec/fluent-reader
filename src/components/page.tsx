@@ -3,7 +3,7 @@ import { useCallback } from "react"
 import { Feed } from "./feeds/feed"
 import { Icon, FocusTrapZone } from "@fluentui/react"
 import Article from "./article"
-import { ViewType } from "../schema-types"
+import { MENU_WIDTH, ViewType, WIDE_SCREEN_QUERY } from "../schema-types"
 import ArticleSearch from "./utils/article-search"
 import { useAppSelector, useAppDispatch } from "../scripts/reducer"
 import {
@@ -37,12 +37,13 @@ const usePageClasses = makeStyles({
             width: "calc(100% - 16px)",
             height: "var(--navHeight)",
             marginBottom: "calc(-1 * var(--navHeight))",
-            background: "linear-gradient(var(--neutralLighterAlt), #faf9f800)",
+            background:
+                "linear-gradient(var(--neutralLighterAlt), transparent)",
             zIndex: 1,
         },
     },
     feedMenuOpen: {
-        "@media (min-width: 1440px)": { marginLeft: "280px" },
+        [WIDE_SCREEN_QUERY]: { marginLeft: `${MENU_WIDTH}px` },
     },
     articleContainer: {
         position: "fixed",

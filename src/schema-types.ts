@@ -31,6 +31,11 @@ export const ARTICLE_OVERLAY_MIN_WIDTH = 860
 export const LIST_VIEW_MIN_WIDTH = 350
 // Preserve the article space at the existing 992px minimum window width.
 export const LIST_ARTICLE_MIN_WIDTH = 992 - LIST_VIEW_MIN_WIDTH
+export const MENU_WIDTH = 240
+// The sidebar docks once all three panes fit at their minimum widths.
+export const WIDE_SCREEN_MIN_WIDTH =
+    MENU_WIDTH + LIST_VIEW_MIN_WIDTH + LIST_ARTICLE_MIN_WIDTH
+export const WIDE_SCREEN_QUERY = `@media (min-width: ${WIDE_SCREEN_MIN_WIDTH}px)`
 
 export const enum ViewConfigs {
     ShowCover = 1 << 0,

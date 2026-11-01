@@ -18,7 +18,7 @@ import {
     openMarkAllMenu,
 } from "../scripts/models/app"
 import { toggleSearch } from "../scripts/models/page"
-import { WindowStateListenerType } from "../schema-types"
+import { ViewType, WindowStateListenerType } from "../schema-types"
 import { FlatButton } from "./utils/FlatButton"
 import { FlatButtonGroup } from "./utils/FlatButtonGroup"
 import { FlatButtonSeparator } from "./utils/FlatButtonSeparator"
@@ -85,6 +85,7 @@ const Nav: React.FC = () => {
     const classes = useClasses()
     const dispatch = useAppDispatch()
     const state = useAppSelector(state => state.app)
+    const viewType = useAppSelector(state => state.page.viewType)
     const articleOverlayOpen = useArticleOverlayOpen()
     const [maximized, setMaximized] = useState(globalThis.utils.isMaximized())
     const isWideScreen = useIsWideScreen()
@@ -265,7 +266,10 @@ const Nav: React.FC = () => {
                         </FlatButton>
                     </FlatButtonGroup>
                 )}
-                <span className="title">{state.title}</span>
+                {/* The list view shows the title at the top of its own pane. */}
+                {viewType !== ViewType.List && (
+                    <span className="title">{state.title}</span>
+                )}
                 <FlatButtonGroup styleClass={classes.navGroupRight}>
                     {isNonNavButtonShown && (
                         <>

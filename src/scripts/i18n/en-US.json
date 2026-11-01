@@ -1,5 +1,8 @@
 {
     "allArticles": "All articles",
+    "list": {
+        "unreadCount": "{count} unread"
+    },
     "add": "Add",
     "create": "Create",
     "icon": "Icon",

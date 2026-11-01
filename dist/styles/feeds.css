@@ -3,6 +3,9 @@
     height: calc(100% - var(--navHeight));
     overflow: hidden scroll;
     position: relative;
+    /* Keep the last row clear of the floating filter. */
+    box-sizing: border-box;
+    padding-bottom: 56px;
 }
 
 .magazine-feed,
@@ -52,4 +55,7 @@
     color: var(--neutralSecondary);
     font-size: 14px;
     user-select: none;
+}
+.list-feed > .empty {
+    height: 100%;
 }

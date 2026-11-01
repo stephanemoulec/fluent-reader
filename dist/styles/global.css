@@ -1,46 +1,52 @@
 :root {
-    --neutralLighterAltOpacity: #faf9f8cc;
-    --neutralLighterAlt: #faf9f8;
-    --neutralLighter: #f3f2f1;
-    --neutralLight: #edebe9;
-    --neutralQuaternaryAlt: #e1dfdd;
-    --neutralQuaternary: #d2d0ce;
-    --neutralTertiaryAlt: #c8c6c4;
-    --neutralTertiary: #a19f9d;
-    --neutralSecondaryAlt: #8a8886;
-    --neutralSecondary: #605e5c;
-    --neutralPrimaryAlt: #3b3a39;
-    --neutralPrimary: #323130;
-    --neutralDark: #201f1e;
-    --neutralDarker: #161514;
-    --black: #000;
-    --white: #fff;
+    --neutralLighterAltOpacity: #f5f3efcc;
+    --neutralLighterAlt: #f5f3ef;
+    --neutralLighter: #efece6;
+    --neutralLight: #e8e5df;
+    --neutralQuaternaryAlt: #dedad2;
+    --neutralQuaternary: #d0ccc3;
+    --neutralTertiaryAlt: #c5c0b7;
+    --neutralTertiary: #a09b92;
+    --neutralSecondaryAlt: #77726a;
+    --neutralSecondary: #5a564f;
+    --neutralPrimaryAlt: #3e3b37;
+    --neutralPrimary: #2f2c28;
+    --neutralDark: #2a2825;
+    --neutralDarker: #211f1c;
+    --black: #1a1815;
+    --white: #fbfaf7;
     --whiteConstant: #fff;
-    --primary: #0f6cbd;
+    --primary: #156b78;
+    --paneSidebar: #e8e5df;
+    --hover: #2a28250f;
+    --selection: #2a28251a;
     --navHeight: 32px;
     --transition-timing: cubic-bezier(0.1, 0.9, 0.2, 1);
     --blur: saturate(150%) blur(20px);
 }
 @media (prefers-color-scheme: dark) {
     :root {
-        --neutralLighterAltOpacity: #282828cc;
-        --neutralLighterAlt: #282828;
-        --neutralLighter: #313131;
-        --neutralLight: #3f3f3f;
-        --neutralQuaternaryAlt: #484848;
-        --neutralQuaternary: #4f4f4f;
-        --neutralTertiaryAlt: #6d6d6d;
-        --neutralTertiary: #c8c8c8;
-        --neutralSecondaryAlt: #d2d0ce;
-        --neutralSecondary: #d0d0d0;
-        --neutralPrimaryAlt: #dadada;
-        --neutralPrimary: #ffffff;
-        --neutralDark: #f4f4f4;
-        --neutralDarker: #f4f4f4;
-        --black: #f8f8f8;
-        --white: #1f1f1f;
+        --neutralLighterAltOpacity: #201e1bcc;
+        --neutralLighterAlt: #201e1b;
+        --neutralLighter: #2c2a27;
+        --neutralLight: #33302c;
+        --neutralQuaternaryAlt: #3c3934;
+        --neutralQuaternary: #46423d;
+        --neutralTertiaryAlt: #6b665f;
+        --neutralTertiary: #c4bfb6;
+        --neutralSecondaryAlt: #a8a298;
+        --neutralSecondary: #cbc6bd;
+        --neutralPrimaryAlt: #dad6ce;
+        --neutralPrimary: #f2efe9;
+        --neutralDark: #f2efe9;
+        --neutralDarker: #f2efe9;
+        --black: #f5f2ec;
+        --white: #262421;
         --whiteConstant: #fff;
-        --primary: #2886de;
+        --primary: #6fb0bc;
+        --paneSidebar: #181715;
+        --hover: #f5f2ec12;
+        --selection: #f5f2ec1f;
     }
 }
 body.darwin {
@@ -110,7 +116,7 @@ body.linux {
     color: var(--neutralDark);
 }
 .ms-Button--commandBar.active .ms-Button-icon {
-    color: #005a9e;
+    color: var(--primary);
 }
 .ms-ActivityItem-activityTypeIcon,
 .ms-ActivityItem-timeStamp {

@@ -51,9 +51,6 @@ const useStyles = makeStyles({
         height: "36px",
         flexShrink: 0,
     },
-    sideToolbar: {
-        borderTop: "1px solid var(--neutralQuaternaryAlt)",
-    },
     spacer: { width: "96px" },
     closeGroup: { width: "112px" },
     actions: {
@@ -333,11 +330,16 @@ function Article({ itemId, side = false }: ArticleProps) {
         const h = encodeURIComponent(
             renderToString(
                 <>
-                    <p className="title">{item.title}</p>
                     <p className="date">
                         {item.date.toLocaleString(locale, {
                             hour12: !locale.startsWith("zh"),
                         })}
+                    </p>
+                    <p className="title">{item.title}</p>
+                    <p className="byline">
+                        {item.creator
+                            ? `${item.creator} · ${source.name}`
+                            : source.name}
                     </p>
                     <article></article>
                 </>
@@ -379,12 +381,7 @@ function Article({ itemId, side = false }: ArticleProps) {
                 classes.root,
                 side && classes.side
             )}>
-            <Stack
-                horizontal
-                className={mergeClasses(
-                    classes.toolbar,
-                    side && classes.sideToolbar
-                )}>
+            <Stack horizontal className={classes.toolbar}>
                 <span className={classes.spacer}></span>
                 <Stack
                     className={mergeClasses(

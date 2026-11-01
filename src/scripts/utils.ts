@@ -4,7 +4,7 @@ import { AnyAction } from "redux"
 import { RootState } from "./reducer"
 import Parser from "rss-parser"
 import Url from "url"
-import { SearchEngines } from "../schema-types"
+import { SearchEngines, WIDE_SCREEN_MIN_WIDTH } from "../schema-types"
 import { sql } from "drizzle-orm"
 import { database } from "./db"
 
@@ -183,7 +183,8 @@ export async function confirmEndpointSecurity(endpoint: string) {
     )
 }
 
-export const getWindowBreakpoint = () => window.innerWidth >= 1440
+export const getWindowBreakpoint = () =>
+    window.innerWidth >= WIDE_SCREEN_MIN_WIDTH
 
 export const cutText = (s: string, length: number) => {
     return s.length <= length ? s : s.slice(0, length) + "…"

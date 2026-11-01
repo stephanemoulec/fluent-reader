@@ -75,7 +75,7 @@ onIpc("get-groups", event => {
 
 const MENU_STORE_KEY = "menuOn"
 onIpc("get-menu", event => {
-    event.returnValue = store.get(MENU_STORE_KEY, false)
+    event.returnValue = store.get(MENU_STORE_KEY, true)
 })
 handleIpc("set-menu", (_, state: boolean) => {
     store.set(MENU_STORE_KEY, state)
@@ -120,7 +120,7 @@ handleIpc("set-proxy", (_, address = null) => {
 
 const VIEW_STORE_KEY = "view"
 onIpc("get-view", event => {
-    event.returnValue = store.get(VIEW_STORE_KEY, ViewType.Cards)
+    event.returnValue = store.get(VIEW_STORE_KEY, ViewType.List)
 })
 handleIpc("set-view", (_, viewType: ViewType) => {
     store.set(VIEW_STORE_KEY, viewType)
