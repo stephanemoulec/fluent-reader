@@ -1,8 +1,11 @@
 import * as React from "react"
+import { useState } from "react"
 import intl from "react-intl-universal"
 import { Stack, Link } from "@fluentui/react"
+import ShortcutsDialog from "../shortcuts-dialog"
 
 const AboutTab: React.FC = () => {
+    const [shortcutsOpen, setShortcutsOpen] = useState(false)
     return (
         <div className="tab-body">
             <Stack className="settings-about" horizontalAlign="center">
@@ -24,12 +27,7 @@ const AboutTab: React.FC = () => {
                     horizontalAlign="center"
                     tokens={{ childrenGap: 12 }}>
                     <small>
-                        <Link
-                            onClick={() =>
-                                globalThis.utils.openExternal(
-                                    "https://github.com/yang991178/fluent-reader/wiki/Support#keyboard-shortcuts"
-                                )
-                            }>
+                        <Link onClick={() => setShortcutsOpen(true)}>
                             {intl.get("settings.shortcuts")}
                         </Link>
                     </small>
@@ -55,6 +53,10 @@ const AboutTab: React.FC = () => {
                     </small>
                 </Stack>
             </Stack>
+            <ShortcutsDialog
+                open={shortcutsOpen}
+                onClose={() => setShortcutsOpen(false)}
+            />
         </div>
     )
 }

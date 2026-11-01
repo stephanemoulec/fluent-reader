@@ -122,7 +122,7 @@ const showAllArticles =
 let chordStart = 0
 
 const handleShortcut =
-    (e: KeyboardEvent): AppThunk =>
+    (e: KeyboardEvent, toggleHelp: () => void): AppThunk =>
     (dispatch, getState) => {
         const { app, items, page } = getState()
         if (
@@ -150,6 +150,8 @@ const handleShortcut =
         } else if (e.ctrlKey) {
             if (e.shiftKey || key !== "m" || !targetItem) return
             dispatch(markAllRead(null, targetItem.date, false))
+        } else if (key === "?") {
+            toggleHelp()
         } else if (
             Date.now() - chordStart < CHORD_TIMEOUT &&
             !e.shiftKey &&
@@ -244,12 +246,13 @@ const handleShortcut =
         if (handled) e.preventDefault()
     }
 
-export function useGlobalShortcuts() {
+export function useGlobalShortcuts(toggleHelp: () => void) {
     const dispatch = useAppDispatch()
 
     useEffect(() => {
-        const listener = (e: KeyboardEvent) => dispatch(handleShortcut(e))
+        const listener = (e: KeyboardEvent) =>
+            dispatch(handleShortcut(e, toggleHelp))
         document.addEventListener("keydown", listener)
         return () => document.removeEventListener("keydown", listener)
-    }, [dispatch])
+    }, [dispatch, toggleHelp])
 }

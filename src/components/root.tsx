@@ -7,12 +7,13 @@ import Settings from "./settings"
 import { useAppDispatch, useAppSelector } from "../scripts/reducer"
 import { ContextMenu } from "./context-menu"
 import LogMenu from "./log-menu"
+import ShortcutsDialog from "./shortcuts-dialog"
 import {
     FluentProvider,
     makeStyles,
     mergeClasses,
 } from "@fluentui/react-components"
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { ThemeProvider } from "@fluentui/react"
 import { CUSTOM_STYLE_HOOKS, createAppTheme } from "./utils/theme"
 import { CustomStyleHooksProvider_unstable as CustomStyleHooksProvider } from "@fluentui/react-shared-contexts"
@@ -45,7 +46,12 @@ const Root: React.FC = () => {
     const dispatch = useAppDispatch()
     const locale = useAppSelector(s => s.app.locale)
     const articleOverlayOpen = useArticleOverlayOpen()
-    useGlobalShortcuts()
+    const [shortcutsOpen, setShortcutsOpen] = useState(false)
+    const toggleShortcuts = useCallback(
+        () => setShortcutsOpen(open => !open),
+        []
+    )
+    useGlobalShortcuts(toggleShortcuts)
 
     const classes = useClasses()
     const [isDarkMode, setIsDarkMode] = useState(() =>
@@ -90,6 +96,10 @@ const Root: React.FC = () => {
                             <Menu />
                             <Settings />
                             <ContextMenu />
+                            <ShortcutsDialog
+                                open={shortcutsOpen}
+                                onClose={toggleShortcuts}
+                            />
                         </div>
                     </CustomStyleHooksProvider>
                 </FluentProvider>

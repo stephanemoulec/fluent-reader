@@ -1,5 +1,5 @@
 import * as React from "react"
-import { useEffect, useState } from "react"
+import { useEffect, useId, useState } from "react"
 import intl from "react-intl-universal"
 import {
     urlTest,
@@ -40,15 +40,88 @@ type AppTabProps = {
 }
 
 const useStyles = makeStyles({
-    root: { display: "flex", flexDirection: "column", gap: "16px" },
-    row: { display: "flex", gap: "8px", alignItems: "flex-start" },
-    section: { display: "flex", flexDirection: "column", gap: "4px" },
+    root: { display: "flex", flexDirection: "column", gap: "14px" },
+    section: { display: "flex", flexDirection: "column", gap: "6px" },
+    sectionTitle: { margin: 0, color: tokens.colorNeutralForeground3 },
+    rows: {
+        display: "flex",
+        flexDirection: "column",
+        border: `1px solid ${tokens.colorNeutralStroke2}`,
+        borderRadius: "10px",
+    },
+    row: {
+        "display": "flex",
+        "alignItems": "center",
+        "justifyContent": "space-between",
+        "gap": "16px",
+        "minHeight": "46px",
+        "padding": "6px 14px",
+        "boxSizing": "border-box",
+        "&:not(:first-child)": {
+            borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
+        },
+    },
+    rowText: {
+        display: "flex",
+        flexDirection: "column",
+        minWidth: 0,
+    },
+    rowControl: { flexShrink: 0 },
+    controls: { display: "flex", alignItems: "center", gap: "8px" },
+    pacForm: {
+        padding: "10px 14px",
+        borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
+    },
     grow: { flex: 1, minWidth: 0 },
-    dropdown: { width: "200px", minWidth: 0 },
-    cleanup: { width: "100%", minWidth: 0 },
-    proxy: { gridTemplateColumns: "1fr auto", alignItems: "center" },
+    dropdown: { width: "230px", minWidth: 0 },
+    cleanup: { width: "270px", minWidth: 0 },
     hint: { color: tokens.colorNeutralForeground3 },
 })
+
+type SettingsSectionProps = {
+    title: string
+    children: React.ReactNode
+}
+
+function SettingsSection({ title, children }: SettingsSectionProps) {
+    const classes = useStyles()
+    return (
+        <section className={classes.section}>
+            <Text
+                as="h3"
+                size={200}
+                weight="semibold"
+                className={classes.sectionTitle}>
+                {title}
+            </Text>
+            <div className={classes.rows}>{children}</div>
+        </section>
+    )
+}
+
+type SettingRowProps = {
+    label: string
+    hint?: string
+    children: React.ReactNode
+}
+
+function SettingRow({ label, hint, children }: SettingRowProps) {
+    const classes = useStyles()
+    const labelId = useId()
+    return (
+        <div className={classes.row} role="group" aria-labelledby={labelId}>
+            <div className={classes.rowText}>
+                <Text id={labelId}>{label}</Text>
+                {hint && (
+                    <Text size={200} className={classes.hint}>
+                        {hint}
+                    </Text>
+                )}
+            </div>
+            <div className={classes.rowControl}>{children}</div>
+        </div>
+    )
+}
 
 async function totalCacheSize() {
     const [browser, thumbnails] = await Promise.all([
@@ -167,188 +240,190 @@ function AppTab({
 
     return (
         <div className={mergeClasses("tab-body", classes.root)}>
-            <Field label={intl.get("app.language")}>
-                <Dropdown
-                    inlinePopup
-                    className={classes.dropdown}
-                    selectedOptions={[locale]}
-                    value={
-                        languageOptions.find(option => option.value === locale)
-                            ?.text || ""
-                    }
-                    onOptionSelect={(_, data) => {
-                        if (!data.optionValue) return
-                        setLocale(data.optionValue)
-                        setLanguage(data.optionValue)
-                    }}>
-                    {languageOptions.map(option => (
-                        <Option key={option.value} value={option.value}>
-                            {option.text}
-                        </Option>
-                    ))}
-                </Dropdown>
-            </Field>
-
-            <Field label={intl.get("app.theme")}>
-                <RadioGroup
-                    value={theme}
-                    onChange={(_, data) => {
-                        const value = data.value as ThemeSettings
-                        setThemeSettings(value)
-                        setTheme(value)
-                    }}>
-                    <Radio
-                        value={ThemeSettings.Default}
-                        label={intl.get("followSystem")}
-                    />
-                    <Radio
-                        value={ThemeSettings.Light}
-                        label={intl.get("app.lightTheme")}
-                    />
-                    <Radio
-                        value={ThemeSettings.Dark}
-                        label={intl.get("app.darkTheme")}
-                    />
-                </RadioGroup>
-            </Field>
-
-            <Field label={intl.get("app.fetchInterval")}>
-                <Dropdown
-                    inlinePopup
-                    className={classes.dropdown}
-                    selectedOptions={[fetchInterval]}
-                    value={
-                        fetchIntervalOptions.find(
-                            option => option.value === fetchInterval
-                        )?.text || ""
-                    }
-                    onOptionSelect={(_, data) => {
-                        if (!data.optionValue) return
-                        setSelectedFetchInterval(data.optionValue)
-                        setFetchInterval(Number(data.optionValue))
-                    }}>
-                    {fetchIntervalOptions.map(option => (
-                        <Option key={option.value} value={option.value}>
-                            {option.text}
-                        </Option>
-                    ))}
-                </Dropdown>
-            </Field>
-
-            <Field label={intl.get("searchEngine.name")}>
-                <Dropdown
-                    inlinePopup
-                    className={classes.dropdown}
-                    selectedOptions={[String(searchEngine)]}
-                    value={getSearchEngineName(searchEngine)}
-                    onOptionSelect={(_, data) => {
-                        if (!data.optionValue) return
-                        const value = Number(data.optionValue)
-                        setSearchEngine(value)
-                        window.settings.setSearchEngine(value)
-                    }}>
-                    {searchEngineOptions.map(engine => (
-                        <Option key={engine} value={String(engine)}>
-                            {getSearchEngineName(engine)}
-                        </Option>
-                    ))}
-                </Dropdown>
-            </Field>
-
-            <Field
-                className={classes.proxy}
-                orientation="horizontal"
-                label={intl.get("app.enableProxy")}>
-                <Switch checked={pacStatus} onChange={toggleProxy} />
-            </Field>
-            {pacStatus && (
-                <form onSubmit={setProxy}>
-                    <Field
-                        validationState={pacError ? "error" : "none"}
-                        validationMessage={pacError}
-                        hint={intl.get("app.pacHint")}>
-                        <div className={classes.row}>
-                            <Input
-                                required
-                                className={classes.grow}
-                                aria-label={intl.get("app.pac")}
-                                placeholder={intl.get("app.pac")}
-                                name="pacUrl"
-                                value={pacUrl}
-                                onChange={(_, data) =>
-                                    setPacUrl(data.value.trim())
-                                }
-                            />
-                            <Button disabled={!validPacUrl} type="submit">
-                                {intl.get("app.setPac")}
-                            </Button>
-                        </div>
-                    </Field>
-                </form>
-            )}
-
-            <Field
-                label={intl.get("app.cleanup")}
-                hint={
-                    itemSize
-                        ? intl.get("app.itemSize", { size: itemSize })
-                        : intl.get("app.calculatingSize")
-                }>
-                <div className={classes.row}>
+            <SettingsSection title={intl.get("app.appearance")}>
+                <SettingRow label={intl.get("app.language")}>
                     <Dropdown
                         inlinePopup
-                        className={mergeClasses(classes.grow, classes.cleanup)}
-                        placeholder={intl.get("app.deleteChoices")}
-                        selectedOptions={
-                            deleteIndex === null ? [] : [deleteIndex]
-                        }
+                        className={classes.dropdown}
+                        selectedOptions={[locale]}
                         value={
-                            deleteOptions.find(
-                                option => option.value === deleteIndex
+                            languageOptions.find(
+                                option => option.value === locale
                             )?.text || ""
                         }
-                        onOptionSelect={(_, data) =>
-                            setDeleteIndex(data.optionValue ?? null)
-                        }>
-                        {deleteOptions.map(option => (
+                        onOptionSelect={(_, data) => {
+                            if (!data.optionValue) return
+                            setLocale(data.optionValue)
+                            setLanguage(data.optionValue)
+                        }}>
+                        {languageOptions.map(option => (
                             <Option key={option.value} value={option.value}>
                                 {option.text}
                             </Option>
                         ))}
                     </Dropdown>
-                    <DangerButton
-                        disabled={itemSize === null || deleteIndex === null}
-                        text={intl.get("app.confirmDelete")}
-                        onClick={confirmDelete}
-                    />
-                </div>
-            </Field>
-            <div className={classes.section}>
-                <div className={classes.row}>
+                </SettingRow>
+                <SettingRow label={intl.get("app.theme")}>
+                    <RadioGroup
+                        layout="horizontal"
+                        value={theme}
+                        onChange={(_, data) => {
+                            const value = data.value as ThemeSettings
+                            setThemeSettings(value)
+                            setTheme(value)
+                        }}>
+                        <Radio
+                            value={ThemeSettings.Default}
+                            label={intl.get("followSystem")}
+                        />
+                        <Radio
+                            value={ThemeSettings.Light}
+                            label={intl.get("app.lightTheme")}
+                        />
+                        <Radio
+                            value={ThemeSettings.Dark}
+                            label={intl.get("app.darkTheme")}
+                        />
+                    </RadioGroup>
+                </SettingRow>
+            </SettingsSection>
+
+            <SettingsSection title={intl.get("app.reading")}>
+                <SettingRow label={intl.get("app.fetchInterval")}>
+                    <Dropdown
+                        inlinePopup
+                        className={classes.dropdown}
+                        selectedOptions={[fetchInterval]}
+                        value={
+                            fetchIntervalOptions.find(
+                                option => option.value === fetchInterval
+                            )?.text || ""
+                        }
+                        onOptionSelect={(_, data) => {
+                            if (!data.optionValue) return
+                            setSelectedFetchInterval(data.optionValue)
+                            setFetchInterval(Number(data.optionValue))
+                        }}>
+                        {fetchIntervalOptions.map(option => (
+                            <Option key={option.value} value={option.value}>
+                                {option.text}
+                            </Option>
+                        ))}
+                    </Dropdown>
+                </SettingRow>
+                <SettingRow label={intl.get("searchEngine.name")}>
+                    <Dropdown
+                        inlinePopup
+                        className={classes.dropdown}
+                        selectedOptions={[String(searchEngine)]}
+                        value={getSearchEngineName(searchEngine)}
+                        onOptionSelect={(_, data) => {
+                            if (!data.optionValue) return
+                            const value = Number(data.optionValue)
+                            setSearchEngine(value)
+                            window.settings.setSearchEngine(value)
+                        }}>
+                        {searchEngineOptions.map(engine => (
+                            <Option key={engine} value={String(engine)}>
+                                {getSearchEngineName(engine)}
+                            </Option>
+                        ))}
+                    </Dropdown>
+                </SettingRow>
+            </SettingsSection>
+
+            <SettingsSection title={intl.get("app.network")}>
+                <SettingRow label={intl.get("app.enableProxy")}>
+                    <Switch checked={pacStatus} onChange={toggleProxy} />
+                </SettingRow>
+                {pacStatus && (
+                    <form className={classes.pacForm} onSubmit={setProxy}>
+                        <Field
+                            validationState={pacError ? "error" : "none"}
+                            validationMessage={pacError}
+                            hint={intl.get("app.pacHint")}>
+                            <div className={classes.controls}>
+                                <Input
+                                    required
+                                    className={classes.grow}
+                                    aria-label={intl.get("app.pac")}
+                                    placeholder={intl.get("app.pac")}
+                                    name="pacUrl"
+                                    value={pacUrl}
+                                    onChange={(_, data) =>
+                                        setPacUrl(data.value.trim())
+                                    }
+                                />
+                                <Button disabled={!validPacUrl} type="submit">
+                                    {intl.get("app.setPac")}
+                                </Button>
+                            </div>
+                        </Field>
+                    </form>
+                )}
+            </SettingsSection>
+
+            <SettingsSection title={intl.get("app.storage")}>
+                <SettingRow
+                    label={intl.get("app.cleanup")}
+                    hint={
+                        itemSize
+                            ? intl.get("app.itemSize", { size: itemSize })
+                            : intl.get("app.calculatingSize")
+                    }>
+                    <div className={classes.controls}>
+                        <Dropdown
+                            inlinePopup
+                            className={classes.cleanup}
+                            placeholder={intl.get("app.deleteChoices")}
+                            selectedOptions={
+                                deleteIndex === null ? [] : [deleteIndex]
+                            }
+                            value={
+                                deleteOptions.find(
+                                    option => option.value === deleteIndex
+                                )?.text || ""
+                            }
+                            onOptionSelect={(_, data) =>
+                                setDeleteIndex(data.optionValue ?? null)
+                            }>
+                            {deleteOptions.map(option => (
+                                <Option key={option.value} value={option.value}>
+                                    {option.text}
+                                </Option>
+                            ))}
+                        </Dropdown>
+                        <DangerButton
+                            disabled={itemSize === null || deleteIndex === null}
+                            text={intl.get("app.confirmDelete")}
+                            onClick={confirmDelete}
+                        />
+                    </div>
+                </SettingRow>
+                <SettingRow
+                    label={intl.get("app.cache")}
+                    hint={
+                        cacheSize
+                            ? intl.get("app.cacheSize", { size: cacheSize })
+                            : intl.get("app.calculatingSize")
+                    }>
                     <Button
                         disabled={cacheSize === null || cacheSize === "0MB"}
                         onClick={clearCache}>
                         {intl.get("app.cache")}
                     </Button>
-                </div>
-                <Text size={200} className={classes.hint}>
-                    {cacheSize
-                        ? intl.get("app.cacheSize", { size: cacheSize })
-                        : intl.get("app.calculatingSize")}
-                </Text>
-            </div>
-
-            <div className={classes.section}>
-                <Text weight="semibold">{intl.get("app.data")}</Text>
-                <div className={classes.row}>
-                    <Button appearance="primary" onClick={exportAll}>
-                        {intl.get("app.backup")}
-                    </Button>
-                    <Button onClick={importAll}>
-                        {intl.get("app.restore")}
-                    </Button>
-                </div>
-            </div>
+                </SettingRow>
+                <SettingRow label={intl.get("app.data")}>
+                    <div className={classes.controls}>
+                        <Button onClick={exportAll}>
+                            {intl.get("app.backup")}
+                        </Button>
+                        <Button onClick={importAll}>
+                            {intl.get("app.restore")}
+                        </Button>
+                    </div>
+                </SettingRow>
+            </SettingsSection>
         </div>
     )
 }
