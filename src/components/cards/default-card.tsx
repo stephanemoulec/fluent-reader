@@ -2,6 +2,7 @@ import * as React from "react"
 import { Card } from "./card"
 import CardInfo from "./info"
 import Highlights from "./highlights"
+import Thumbnail from "./thumbnail"
 import { SourceTextDirection } from "../../scripts/models/source"
 
 const className = (props: Card.Props) => {
@@ -19,11 +20,11 @@ const DefaultCard: React.FunctionComponent<Card.Props> = props => (
         data-iid={props.item._id}
         data-is-focusable>
         {props.item.thumb ? (
-            <img className="bg" src={props.item.thumb} />
+            <Thumbnail className="bg" src={props.item.thumb} />
         ) : null}
         <div className="bg"></div>
         {props.item.thumb ? (
-            <img className="head" src={props.item.thumb} />
+            <Thumbnail className="head" src={props.item.thumb} />
         ) : null}
         <CardInfo source={props.source} item={props.item} />
         <h3 className="title">

@@ -14,6 +14,10 @@ import {
     exportAll,
 } from "../../scripts/settings"
 import {
+    clearThumbnailCache,
+    getThumbnailCacheSize,
+} from "../../scripts/thumbnails"
+import {
     Button,
     Dropdown,
     Field,
@@ -46,6 +50,14 @@ const useStyles = makeStyles({
     hint: { color: tokens.colorNeutralForeground3 },
 })
 
+async function totalCacheSize() {
+    const [browser, thumbnails] = await Promise.all([
+        window.utils.getCacheSize(),
+        getThumbnailCacheSize(),
+    ])
+    return browser + thumbnails
+}
+
 function AppTab({
     setLanguage,
     setFetchInterval,
@@ -76,7 +88,7 @@ function AppTab({
         calculateItemSize().then(size => {
             if (active) setItemSize(byteToMB(size))
         })
-        window.utils.getCacheSize().then(size => {
+        totalCacheSize().then(size => {
             if (active) setCacheSize(byteToMB(size))
         })
         return () => {
@@ -149,8 +161,8 @@ function AppTab({
     }
 
     async function clearCache() {
-        await window.utils.clearCache()
-        setCacheSize(byteToMB(await window.utils.getCacheSize()))
+        await Promise.all([window.utils.clearCache(), clearThumbnailCache()])
+        setCacheSize(byteToMB(await totalCacheSize()))
     }
 
     return (
