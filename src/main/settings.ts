@@ -18,7 +18,7 @@ import {
 import { session, nativeTheme, app, safeStorage } from "electron"
 import { WindowManager } from "./window"
 import { handleIpc, onIpc } from "./ipc"
-import { transformLovefieldRules } from "./utils"
+import { transformLovefieldRules } from "../rules-migration"
 
 export const store = new Store<SchemaTypes>({ cache: true })
 

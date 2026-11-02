@@ -8,6 +8,7 @@ import {
 import { RSSItem } from "../../../scripts/models/item"
 import { SourceOpenTarget } from "../../../scripts/models/source"
 import { decodeFetchResponse } from "../../../scripts/utils"
+import { fetchWithDeadline } from "../../../scripts/network"
 
 function isWebLink(link: string) {
     return link.startsWith("https://") || link.startsWith("http://")
@@ -117,11 +118,14 @@ export function useArticleView(item: RSSItem, openTarget: SourceOpenTarget) {
 
         const loadContent = async () => {
             try {
-                const response = await fetch(item.link, {
-                    signal: controller.signal,
-                })
-                if (!response.ok) throw new Error()
-                const html = await decodeFetchResponse(response, true)
+                const html = await fetchWithDeadline(
+                    item.link,
+                    async response => {
+                        if (!response.ok) throw new Error()
+                        return decodeFetchResponse(response, true)
+                    },
+                    { signal: controller.signal }
+                )
                 if (!controller.signal.aborted)
                     setView(view => ({ ...view, fullContent: html }))
             } catch {

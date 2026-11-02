@@ -35,6 +35,7 @@ import {
 import { getCurrentLocale } from "../settings"
 import locales from "../i18n/_locales"
 import { SYNC_SERVICE, ServiceActionTypes } from "./service"
+import { ArticleRule } from "./rule"
 
 export const enum ContextMenuType {
     Hidden,
@@ -171,6 +172,7 @@ export type ContextMenuActionTypes =
 export const TOGGLE_LOGS = "TOGGLE_LOGS"
 export const PUSH_NOTIFICATION = "PUSH_NOTIFICATION"
 export const UPDATE_AVAILABLE = "UPDATE_AVAILABLE"
+export const UNSUPPORTED_RULES = "UNSUPPORTED_RULES"
 
 interface ToggleLogMenuAction {
     type: typeof TOGGLE_LOGS
@@ -189,10 +191,16 @@ interface UpdateAvailableAction {
     url: string
 }
 
+interface UnsupportedRulesAction {
+    type: typeof UNSUPPORTED_RULES
+    count: number
+}
+
 export type LogMenuActionType =
     | ToggleLogMenuAction
     | PushNotificationAction
     | UpdateAvailableAction
+    | UnsupportedRulesAction
 
 export const TOGGLE_MENU = "TOGGLE_MENU"
 
@@ -406,7 +414,7 @@ export function initIntl(): AppThunk<Promise<void>> {
 }
 
 export function initApp(): AppThunk<Promise<void>> {
-    return async dispatch => {
+    return async (dispatch, getState) => {
         document.body.classList.add(window.utils.platform)
         await dispatch(initIntl())
         if (window.utils.platform === "darwin") initTouchBarWithTexts()
@@ -425,6 +433,11 @@ export function initApp(): AppThunk<Promise<void>> {
             window.utils.closeWindow()
             return
         }
+        const unsupportedRules = Object.values(getState().rules)
+            .flat()
+            .filter(rule => !ArticleRule.isSupported(rule)).length
+        if (unsupportedRules > 0)
+            dispatch({ type: UNSUPPORTED_RULES, count: unsupportedRules })
         await dispatch(initFeeds())
         dispatch(selectAllArticles())
         await dispatch(fetchItems())
@@ -571,10 +584,12 @@ export function appReducer(
                 case ActionStatus.Success:
                     return {
                         ...state,
-                        fetchingItems: false,
-                        fetchingTotal: 0,
+                        fetchingItems: Boolean(action.continuing),
+                        fetchingTotal: action.continuing
+                            ? state.fetchingTotal
+                            : 0,
                         logMenu:
-                            action.items.length == 0
+                            action.continuing || action.fetchedCount == 0
                                 ? state.logMenu
                                 : {
                                       ...state.logMenu,
@@ -583,7 +598,7 @@ export function appReducer(
                                           new AppLog(
                                               AppLogType.Info,
                                               intl.get("log.fetchSuccess", {
-                                                  count: action.items.length,
+                                                  count: action.fetchedCount,
                                               })
                                           ),
                                       ],
@@ -710,6 +725,23 @@ export function appReducer(
                     ...state.logMenu,
                     display: !state.logMenu.display,
                     notify: false,
+                },
+            }
+        case UNSUPPORTED_RULES:
+            return {
+                ...state,
+                logMenu: {
+                    ...state.logMenu,
+                    notify: true,
+                    logs: [
+                        ...state.logMenu.logs,
+                        new AppLog(
+                            AppLogType.Warning,
+                            intl.get("log.unsupportedRules", {
+                                count: action.count,
+                            })
+                        ),
+                    ],
                 },
             }
         case UPDATE_AVAILABLE:

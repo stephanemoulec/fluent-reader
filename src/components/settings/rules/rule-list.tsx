@@ -48,7 +48,17 @@ export function RuleList({
             createTableColumn<ArticleRule>({
                 columnId: "regex",
                 renderHeaderCell: () => intl.get("rules.regex"),
-                renderCell: rule => rule.filter.search,
+                renderCell: rule =>
+                    ArticleRule.isSupported(rule) ? (
+                        rule.filter.search
+                    ) : (
+                        <span
+                            className={classes.unsupported}
+                            title={intl.get("rules.unsupported")}>
+                            {rule.filter.search} ({intl.get("rules.notApplied")}
+                            )
+                        </span>
+                    ),
             }),
             createTableColumn<ArticleRule>({
                 columnId: "actions",
@@ -59,7 +69,7 @@ export function RuleList({
                         .join(", "),
             }),
         ],
-        []
+        [classes.unsupported]
     )
 
     function reorder(insertIndex: number) {

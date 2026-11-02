@@ -11,50 +11,43 @@ type HighlightsProps = {
 
 const Highlights: React.FunctionComponent<HighlightsProps> = props => {
     const spans: [string, boolean][] = new Array()
-    const flags = props.filter.type & FilterType.CaseInsensitive ? "ig" : "g"
-    let regex: RegExp
-    if (
-        props.filter.search === "" ||
-        !(regex = validateRegex(props.filter.search, flags))
-    ) {
-        if (props.title) spans.push([props.text, false])
-        else spans.push([props.text.substr(0, 325), false])
-    } else if (props.title) {
-        let match: RegExpExecArray
-        do {
-            const startIndex = regex.lastIndex
-            match = regex.exec(props.text)
-            if (match) {
-                if (startIndex != match.index) {
-                    spans.push([
-                        props.text.substring(startIndex, match.index),
-                        false,
-                    ])
-                }
-                spans.push([match[0], true])
-            } else {
-                spans.push([props.text.substr(startIndex), false])
-            }
-        } while (match && regex.lastIndex < props.text.length)
+    const flags = props.filter.type & FilterType.CaseInsensitive ? "i" : ""
+    const text = props.text || ""
+    const regex =
+        props.filter.search === ""
+            ? null
+            : validateRegex(props.filter.search, flags)
+    if (!regex) {
+        spans.push([props.title ? text : text.slice(0, 325), false])
     } else {
-        const match = regex.exec(props.text)
-        if (match) {
-            if (match.index != 0) {
-                const startIndex = Math.max(
-                    match.index - 25,
-                    props.text.lastIndexOf(" ", Math.max(match.index - 10, 0))
+        const matcher = regex.matcher(text)
+        let cursor = 0
+        while (matcher.find()) {
+            const start = matcher.start()
+            const end = matcher.end()
+            // Empty matches, from patterns like ^ or a*, have nothing to highlight.
+            if (start === end) continue
+            if (props.title) {
+                if (cursor != start)
+                    spans.push([text.substring(cursor, start), false])
+            } else if (start != 0) {
+                const from = Math.max(
+                    start - 25,
+                    text.lastIndexOf(" ", Math.max(start - 10, 0))
                 )
-                spans.push([
-                    props.text.substring(Math.max(0, startIndex), match.index),
-                    false,
-                ])
+                spans.push([text.substring(Math.max(0, from), start), false])
             }
-            spans.push([match[0], true])
-            if (regex.lastIndex < props.text.length) {
-                spans.push([props.text.substr(regex.lastIndex, 300), false])
-            }
-        } else {
-            spans.push([props.text.substr(0, 325), false])
+            spans.push([text.substring(start, end), true])
+            cursor = end
+            if (!props.title) break
+        }
+        if (props.title) {
+            if (cursor < text.length) spans.push([text.slice(cursor), false])
+        } else if (cursor < text.length) {
+            spans.push([
+                text.slice(cursor, cursor + (cursor ? 300 : 325)),
+                false,
+            ])
         }
     }
 

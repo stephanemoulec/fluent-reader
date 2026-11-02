@@ -1,3 +1,4 @@
+import { SERVICE_TIMEOUT_MS } from "../../network"
 import intl from "react-intl-universal"
 import { ServiceHooks } from "../service"
 import { ServiceConfigs, SyncService } from "../../../schema-types"
@@ -22,6 +23,7 @@ async function fetchAPI(configs: FeverConfigs, params = "", postparams = "") {
         method: "POST",
         headers: { "content-type": "application/x-www-form-urlencoded" },
         body: `api_key=${configs.apiKey}${postparams}`,
+        signal: AbortSignal.timeout(SERVICE_TIMEOUT_MS),
     })
     return await response.json()
 }

@@ -2,12 +2,7 @@ import { ipcMain, shell, dialog, app, session, clipboard, net } from "electron"
 import { WindowManager } from "./window"
 import { handleIpc, handleIpcOnce, onIpc } from "./ipc"
 import * as fs from "node:fs"
-import {
-    ImageCallbackTypes,
-    LinkTarget,
-    StoredRules,
-    TouchBarTexts,
-} from "../schema-types"
+import { ImageCallbackTypes, LinkTarget, TouchBarTexts } from "../schema-types"
 import { initMainTouchBar } from "./touchbar"
 import { getDefaultBrowser, openInPrivateWindow } from "./private-window"
 import { getLinkTarget } from "./settings"
@@ -32,6 +27,7 @@ const USER_INPUT_EVENTS = new Set([
     "gestureTap",
 ])
 
+const UPDATE_CHECK_TIMEOUT = 15000
 const LATEST_RELEASE_API =
     "https://api.github.com/repos/yang991178/fluent-reader/releases/latest"
 
@@ -50,7 +46,9 @@ async function checkForUpdate() {
     // Store builds update themselves, and dev builds have no release to compare.
     if (!app.isPackaged || process.windowsStore || process.mas) return null
     try {
-        const response = await net.fetch(LATEST_RELEASE_API)
+        const response = await net.fetch(LATEST_RELEASE_API, {
+            signal: AbortSignal.timeout(UPDATE_CHECK_TIMEOUT),
+        })
         if (!response.ok) return null
         const { tag_name: version, html_url: url } = await response.json()
         if (
@@ -437,27 +435,4 @@ export function setUtilsListeners(manager: WindowManager) {
             disableQuoting: true,
         })
     })
-}
-
-export function transformLovefieldRules(
-    sources: Record<string, unknown>[]
-): StoredRules {
-    const storedRules: StoredRules = {}
-    for (const source of sources) {
-        const rules = source.rules as Record<string, unknown>[] | undefined
-        if (!Array.isArray(rules) || rules.length === 0) continue
-        storedRules[`source:${source.sid as number}`] = rules.map(rule => {
-            const filter = rule.filter as Record<string, unknown>
-            const actions = rule.actions as Record<string, boolean>
-            return {
-                filter: (filter?.type as number) ?? 0,
-                search: (filter?.search as string) ?? "",
-                match: rule.match as boolean,
-                actions: Object.entries(actions || {}).map(
-                    ([type, flag]) => `${type}-${flag}`
-                ),
-            }
-        })
-    }
-    return storedRules
 }

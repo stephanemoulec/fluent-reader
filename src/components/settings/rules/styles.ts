@@ -28,6 +28,7 @@ export const useStyles = makeStyles({
     delete: { color: tokens.colorPaletteRedForeground1 },
     grid: { maxHeight: "400px", overflowY: "auto" },
     ruleRow: { cursor: "grab" },
+    unsupported: { color: tokens.colorPaletteRedForeground1 },
     hint: {
         fontSize: tokens.fontSizeBase200,
         color: tokens.colorNeutralForeground3,

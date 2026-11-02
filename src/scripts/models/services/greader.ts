@@ -1,3 +1,4 @@
+import { SERVICE_TIMEOUT_MS } from "../../network"
 import intl from "react-intl-universal"
 import { database, itemsTable, itemsInSources } from "../../db"
 import { and, eq, isNotNull, lte, gte } from "drizzle-orm"
@@ -49,6 +50,7 @@ async function fetchAPI(
         method: method,
         headers: headers,
         body: body,
+        signal: AbortSignal.timeout(SERVICE_TIMEOUT_MS),
     })
 }
 

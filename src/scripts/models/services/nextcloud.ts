@@ -1,3 +1,4 @@
+import { SERVICE_TIMEOUT_MS } from "../../network"
 import intl from "react-intl-universal"
 import { database, itemsTable, itemsInSources } from "../../db"
 import { and, eq, isNotNull, lte, gte } from "drizzle-orm"
@@ -25,7 +26,10 @@ async function fetchAPI(configs: NextcloudConfigs, params: string) {
         "Authorization",
         "Basic " + btoa(configs.username + ":" + configs.password)
     )
-    return await fetch(configs.endpoint + params, { headers: headers })
+    return await fetch(configs.endpoint + params, {
+        headers: headers,
+        signal: AbortSignal.timeout(SERVICE_TIMEOUT_MS),
+    })
 }
 
 async function markItems(
@@ -53,6 +57,7 @@ async function markItems(
                 method: method,
                 headers: headers,
                 body: JSON.stringify(bodyObject),
+                signal: AbortSignal.timeout(SERVICE_TIMEOUT_MS),
             })
         )
     }

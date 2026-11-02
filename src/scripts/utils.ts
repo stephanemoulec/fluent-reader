@@ -1,3 +1,11 @@
+import {
+    FAVICON_TIMEOUT_MS,
+    fetchWithDeadline,
+    readBoundedResponse,
+    RequestTimeoutError,
+    ResponseTooLargeError,
+} from "./network"
+import { compileRegex } from "../safe-regex"
 import intl from "react-intl-universal"
 import { ThunkAction, ThunkDispatch } from "redux-thunk"
 import { AnyAction } from "redux"
@@ -45,7 +53,7 @@ export type MyParserItem = extractGeneric<typeof rssParser> &
 const CHARSET_RE = /charset=([^()<>@,;:\"/[\]?.=\s]*)/i
 const XML_ENCODING_RE = /^<\?xml.+encoding="(.+?)".*?\?>/i
 export async function decodeFetchResponse(response: Response, isHTML = false) {
-    const buffer = await response.arrayBuffer()
+    const buffer = await readBoundedResponse(response)
     let ctype =
         response.headers.has("content-type") &&
         response.headers.get("content-type")
@@ -81,22 +89,33 @@ export async function decodeFetchResponse(response: Response, isHTML = false) {
 }
 
 export async function parseRSS(url: string) {
-    let result: Response
+    let content: string
     try {
-        result = await fetch(url, { credentials: "omit" })
-    } catch {
-        throw new Error(intl.get("log.networkError"))
-    }
-    if (result && result.ok) {
-        try {
-            return await rssParser.parseString(
-                await decodeFetchResponse(result)
-            )
-        } catch {
+        content = await fetchWithDeadline(
+            url,
+            async response => {
+                if (!response.ok)
+                    throw new Error(response.status + " " + response.statusText)
+                return decodeFetchResponse(response)
+            },
+            { credentials: "omit" }
+        )
+    } catch (err) {
+        if (err instanceof RequestTimeoutError)
+            throw new Error(intl.get("log.timeout"))
+        if (err instanceof ResponseTooLargeError)
+            throw new Error(intl.get("log.tooLarge"))
+        if (err instanceof TypeError)
+            throw new Error(intl.get("log.networkError"))
+        // TextDecoder rejects a charset it doesn't know.
+        if (err instanceof RangeError)
             throw new Error(intl.get("log.parseError"))
-        }
-    } else {
-        throw new Error(result.status + " " + result.statusText)
+        throw err
+    }
+    try {
+        return await rssParser.parseString(content)
+    } catch {
+        throw new Error(intl.get("log.parseError"))
     }
 }
 
@@ -105,9 +124,14 @@ export const domParser = new DOMParser()
 export async function fetchFavicon(url: string) {
     try {
         url = url.split("/").slice(0, 3).join("/")
-        let result = await fetch(url, { credentials: "omit" })
+        let result = await fetch(url, {
+            credentials: "omit",
+            signal: AbortSignal.timeout(FAVICON_TIMEOUT_MS),
+        })
         if (result.ok) {
-            let html = await result.text()
+            let html = new TextDecoder().decode(
+                await readBoundedResponse(result)
+            )
             let dom = domParser.parseFromString(html, "text/html")
             let links = dom.getElementsByTagName("link")
             for (let link of links) {
@@ -138,7 +162,10 @@ export async function fetchFavicon(url: string) {
 export async function validateFavicon(url: string) {
     let flag = false
     try {
-        const result = await fetch(url, { credentials: "omit" })
+        const result = await fetch(url, {
+            credentials: "omit",
+            signal: AbortSignal.timeout(FAVICON_TIMEOUT_MS),
+        })
         if (
             result.status == 200 &&
             result.headers.has("Content-Type") &&
@@ -266,9 +293,9 @@ export async function calculateItemSize(): Promise<number> {
     return result?.[0] ?? 0
 }
 
-export function validateRegex(regex: string, flags = ""): RegExp {
+export function validateRegex(regex: string, flags: "" | "i" = "") {
     try {
-        return new RegExp(regex, flags)
+        return compileRegex(regex, flags)
     } catch {
         return null
     }

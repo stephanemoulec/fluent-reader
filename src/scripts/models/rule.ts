@@ -1,3 +1,4 @@
+import { compileRegex } from "../../safe-regex"
 import { FeedFilter, FilterType } from "./feed"
 import { RSSItem } from "./item"
 import {
@@ -86,7 +87,19 @@ export class ArticleRule {
         }
     }
 
+    // Rules saved before the regex engine changed may use lookaround or backreferences.
+    static isSupported(rule: ArticleRule) {
+        try {
+            compileRegex(rule.filter.search)
+            return true
+        } catch {
+            return false
+        }
+    }
+
     static apply(rule: ArticleRule, item: RSSItem) {
+        // An unreadable pattern matches nothing, which would fire a "does not match" rule.
+        if (!this.isSupported(rule)) return
         let result = FeedFilter.testItem(rule.filter, item)
         if (result === rule.match) {
             for (let [action, flag] of Object.entries(rule.actions)) {

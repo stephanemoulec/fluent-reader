@@ -26,6 +26,7 @@ npm run build
 
 This runs `webpack --config ./webpack.config.js`, which produces three bundles in `dist/`:
 - `electron.js` — Electron main process (from `src/electron.ts`)
+- `db-worker.js` — SQLite worker thread (from `src/main/db-worker.ts`)
 - `preload.js` — Preload script (from `src/preload.ts`)
 - `index.js` + `index.html` — Renderer/React app (from `src/index.tsx`)
 
@@ -115,7 +116,7 @@ Both CI pipelines run `npm install` then `npm run build`. There are no lint or t
 | `schema-types.ts` | Shared TypeScript enums and types (ViewType, ThemeSettings, StoredRule, etc.) |
 | `db/schema.ts` | **Drizzle schema** — defines `sourcesTable` and `itemsTable` for better-sqlite3. |
 | `bridges/` | IPC bridges between renderer and main process (`settings.ts`, `utils.ts`, `db.ts`). |
-| `main/` | Electron main-process modules: `window.ts` (BrowserWindow), `settings.ts` (electron-store + IPC handlers), `db.ts` (SQLite init, migrations, IPC handler for db:execute, export/import), `utils.ts` (IPC utilities), `touchbar.ts`, `update-scripts.ts`. |
+| `main/` | Electron main-process modules: `window.ts` (BrowserWindow), `settings.ts` (electron-store + IPC handlers), `db.ts` (starts the database worker, IPC handlers for db:execute, export/import dialogs), `db-worker.ts` (SQLite init, migrations, queries, export/import), `utils.ts` (IPC utilities), `touchbar.ts`, `update-scripts.ts`. |
 | `scripts/` | Renderer-side logic (runs in browser context). |
 | `scripts/reducer.ts` | Root Redux store — combines: sources, items, feeds, groups, page, service, app. |
 | `scripts/settings.ts` | Theme management, locale setup, Fluent UI theming. |
@@ -137,9 +138,10 @@ Contains app icons (`build/icons/`), macOS entitlements plists, provisioning pro
 ## Architecture Notes
 
 - **IPC pattern**: The renderer never imports Electron directly. All Electron APIs are accessed through `src/bridges/` which are exposed via `contextBridge` in `preload.ts`. Settings state flows: renderer → bridge (ipcRenderer) → main/settings.ts (ipcMain handlers) → electron-store.
-- **Database**: SQLite via **better-sqlite3** in the main process. The renderer accesses it through a single `db:execute` IPC handler using **drizzle-orm**'s sqlite-proxy pattern. The drizzle instance in the renderer (`database` from `scripts/db.ts`) sends all queries through `window.db.execute(sql, params, method)`. Schema is defined in `src/db/schema.ts`; migrations live in `dist/drizzle/` and are applied at startup via `migrate()` in `main/db.ts`. The SQLite file is colocated with electron-store's `config.json` (i.e., `path.dirname(store.path)`).
+- **Database**: SQLite via **better-sqlite3** in a worker thread (`main/db-worker.ts`), so heavy queries don't block the main process. The renderer accesses it through a single `db:execute` IPC handler using **drizzle-orm**'s sqlite-proxy pattern. The drizzle instance in the renderer (`database` from `scripts/db.ts`) sends all queries through `window.db.execute(sql, params, method)`. Schema is defined in `src/db/schema.ts`; migrations live in `dist/drizzle/` and are applied at startup via `migrate()` in `main/db-worker.ts`. The SQLite file is colocated with electron-store's `config.json` (i.e., `path.dirname(store.path)`).
 - **Rules storage**: Rules are stored in electron-store under the `sourceRules` key as a `StoredRules` map. Each value is an ordered `StoredRule[]`. `setRulesForTarget()` replaces one target's rules in the main process; an empty array removes that entry. `getAllRules()` loads the map. Source entries are attached to `RSSSource.rules` during `initSources()`.
 - **State management**: Redux with `redux-thunk` for async actions. The store shape is defined by `RootState` in `scripts/reducer.ts`. Each model file in `scripts/models/` exports its own reducer, action types, and thunk action creators.
+- **Regular expressions**: User-supplied patterns (search, rules) go through `compileRegex` in `src/safe-regex.ts`, a linear-time engine. Don't pass them to `RegExp`.
 - **i18n**: To add or modify translations, edit JSON files in `src/scripts/i18n/`. Register new locales in `_locales.ts`.
 - **RSS service integrations**: Located in `src/scripts/models/services/` (logic) and `src/components/settings/services/` (UI). Supported: Fever, Google Reader API (GReader), Inoreader, Feedbin, Miniflux, Nextcloud.
 

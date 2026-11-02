@@ -7,7 +7,10 @@ module.exports = [
     {
         mode: "production",
         stats: "minimal",
-        entry: "./src/electron.ts",
+        entry: {
+            "electron": "./src/electron.ts",
+            "db-worker": "./src/main/db-worker.ts",
+        },
         target: "electron-main",
         externals: {
             "better-sqlite3": "commonjs better-sqlite3",
@@ -27,7 +30,7 @@ module.exports = [
         output: {
             devtoolModuleFilenameTemplate: "[absolute-resource-path]",
             path: __dirname + "/dist",
-            filename: "electron.js",
+            filename: "[name].js",
         },
         node: {
             __dirname: false,

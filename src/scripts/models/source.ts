@@ -73,12 +73,7 @@ export class RSSSource {
         return feed
     }
 
-    private static async checkItem(
-        i: RSSItem,
-        item: MyParserItem,
-        rules: ArticleRule[],
-        hasPublicationDate: boolean
-    ): Promise<RSSItem> {
+    private static existingItemQuery(i: RSSItem, hasPublicationDate: boolean) {
         const legacyMatch = and(
             eq(itemsTable.title, i.title),
             eq(itemsTable.link, i.link),
@@ -92,7 +87,7 @@ export class RSSSource {
                   and(isNull(itemsTable.guid), legacyMatch)
               )
             : legacyMatch
-        const existing = await database
+        return database
             .select({ _id: itemsTable._id })
             .from(itemsTable)
             .where(
@@ -103,13 +98,6 @@ export class RSSSource {
                 )
             )
             .limit(1)
-        if (existing.length === 0) {
-            RSSItem.parseContent(i, item)
-            ArticleRule.applyAll(rules, i)
-            return i
-        } else {
-            return null
-        }
     }
 
     static async checkItems(
@@ -119,7 +107,11 @@ export class RSSSource {
     ): Promise<RSSItem[]> {
         const seenGuids = new Set<string>()
         const seenFallbacks = new Map<string, Set<number>>()
-        const pending: Promise<RSSItem>[] = []
+        const candidates: {
+            parsed: RSSItem
+            item: MyParserItem
+            hasPublicationDate: boolean
+        }[] = []
         for (const item of items) {
             // A display date synthesized from fetch time is not a stable identity.
             const hasPublicationDate =
@@ -143,11 +135,26 @@ export class RSSSource {
                     )
                 }
             }
-            pending.push(
-                this.checkItem(parsed, item, rules, hasPublicationDate)
-            )
+            candidates.push({ parsed, item, hasPublicationDate })
         }
-        return (await Promise.all(pending)).filter(item => item != null)
+        const result: RSSItem[] = []
+        // Bound IPC messages and pending promises while retaining indexed identity checks.
+        for (let offset = 0; offset < candidates.length; offset += 100) {
+            const chunk = candidates.slice(offset, offset + 100)
+            const [first, ...rest] = chunk.map(
+                ({ parsed, hasPublicationDate }) =>
+                    this.existingItemQuery(parsed, hasPublicationDate)
+            )
+            const existing = await database.batch([first, ...rest])
+            for (let index = 0; index < chunk.length; index++) {
+                if (existing[index].length) continue
+                const { parsed, item } = chunk[index]
+                RSSItem.parseContent(parsed, item)
+                ArticleRule.applyAll(rules, parsed)
+                result.push(parsed)
+            }
+        }
+        return result
     }
 
     static async fetchItems(source: RSSSource, rules: ArticleRule[]) {

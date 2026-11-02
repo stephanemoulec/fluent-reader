@@ -41,6 +41,12 @@ The repo of the mobile version of this app [can be found here](https://github.co
 
 Support for other RSS services are [under fundraising](https://github.com/yang991178/fluent-reader/issues/23). 
 
+## Search and refresh limits
+
+Search and article rules use linear-time regular expressions, so a bad pattern can't freeze the app. Alternation, character classes and repetition work; lookaround and backreferences don't. Expressions are limited to 4,096 characters. Rules saved with unsupported syntax are marked in Settings and aren't applied until you update them.
+
+A refresh fetches up to 12 feeds at a time, with a 30-second deadline and a 50 MB limit per feed. Each feed's articles are saved as soon as it finishes.
+
 ## Development
 
 ### Contribute
