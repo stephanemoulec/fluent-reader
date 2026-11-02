@@ -265,6 +265,12 @@
         "exportToLite": "Export to Fluent Reader Lite"
     },
     "app": {
+        "linkTarget": "Open links in",
+        "normalWindow": "Normal window",
+        "privateWindow": "Private window",
+        "privateUnsupported": "Private windows aren't available for your default browser",
+        "privateFailedTitle": "Couldn't open a private window",
+        "privateFailed": "The link wasn't opened. Your default browser may not support this, or you can switch back to normal windows in Preferences.",
         "appearance": "Appearance",
         "reading": "Reading",
         "network": "Network",

@@ -5,6 +5,7 @@ import {
     ViewType,
     ThemeSettings,
     SearchEngines,
+    LinkTarget,
     SyncService,
     ServiceConfigs,
     ViewConfigs,
@@ -212,6 +213,17 @@ onIpc("get-search-engine", event => {
 })
 handleIpc("set-search-engine", (_, engine: SearchEngines) => {
     store.set(SEARCH_ENGINE_STORE_KEY, engine)
+})
+
+const LINK_TARGET_STORE_KEY = "linkTarget"
+export function getLinkTarget() {
+    return store.get(LINK_TARGET_STORE_KEY, LinkTarget.Normal)
+}
+onIpc("get-link-target", event => {
+    event.returnValue = getLinkTarget()
+})
+handleIpc("set-link-target", (_, target: LinkTarget) => {
+    store.set(LINK_TARGET_STORE_KEY, target)
 })
 
 const SERVICE_CONFIGS_STORE_KEY = "serviceConfigs"

@@ -3,6 +3,7 @@ import {
     ViewType,
     ThemeSettings,
     SearchEngines,
+    LinkTarget,
     ServiceConfigs,
     ViewConfigs,
     StoredRule,
@@ -114,6 +115,13 @@ const settingsBridge = {
     },
     setSearchEngine: (engine: SearchEngines) => {
         ipcRenderer.invoke("set-search-engine", engine)
+    },
+
+    getLinkTarget: (): LinkTarget => {
+        return ipcRenderer.sendSync("get-link-target")
+    },
+    setLinkTarget: (target: LinkTarget) => {
+        ipcRenderer.invoke("set-link-target", target)
     },
 
     getServiceConfigs: (): ServiceConfigs => {

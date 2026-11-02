@@ -88,14 +88,14 @@ const useSettingsClasses = makeStyles({
         alignItems: "center",
         justifyContent: "space-between",
         flexShrink: 0,
-        padding: "12px 12px 12px 24px",
+        padding: "10px 12px 10px 24px",
     },
     content: {
         flexGrow: 1,
         minHeight: 0,
         overflowY: "auto",
         position: "relative",
-        padding: "0 24px 24px",
+        padding: "0 24px 12px",
     },
 })
 

@@ -21,6 +21,16 @@ const utilsBridge = {
         ipcRenderer.invoke("open-external", url, background)
     },
 
+    canOpenPrivateWindow: (): Promise<boolean> => {
+        return ipcRenderer.invoke("can-open-private-window")
+    },
+    addPrivateWindowFailedListener: (callback: () => any) => {
+        ipcRenderer.removeAllListeners("private-window-failed")
+        ipcRenderer.on("private-window-failed", () => {
+            callback()
+        })
+    },
+
     showErrorBox: (title: string, content: string, copy?: string) => {
         return ipcRenderer.invoke("show-error-box", title, content, copy)
     },

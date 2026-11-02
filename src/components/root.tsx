@@ -1,4 +1,5 @@
 import * as React from "react"
+import intl from "react-intl-universal"
 import { closeContextMenu } from "../scripts/models/app"
 import Page from "./page"
 import { Menu } from "./menu"
@@ -52,6 +53,15 @@ const Root: React.FC = () => {
         []
     )
     useGlobalShortcuts(toggleShortcuts)
+
+    useEffect(() => {
+        window.utils.addPrivateWindowFailedListener(() => {
+            window.utils.showErrorBox(
+                intl.get("app.privateFailedTitle"),
+                intl.get("app.privateFailed")
+            )
+        })
+    }, [])
 
     const classes = useClasses()
     const [isDarkMode, setIsDarkMode] = useState(() =>

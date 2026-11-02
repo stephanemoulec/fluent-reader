@@ -56,6 +56,11 @@ export const enum SearchEngines {
     DuckDuckGo,
 }
 
+export const enum LinkTarget {
+    Normal,
+    Private,
+}
+
 export const enum ImageCallbackTypes {
     OpenExternal,
     OpenExternalBg,
@@ -134,6 +139,7 @@ export type SchemaTypes = {
     menuOn: boolean
     fetchInterval: number
     searchEngine: SearchEngines
+    linkTarget: LinkTarget
     serviceConfigs: ServiceConfigs
     serviceConfigsEncrypted: string
     filterType: number

@@ -2,8 +2,15 @@ import { ipcMain, shell, dialog, app, session, clipboard, net } from "electron"
 import { WindowManager } from "./window"
 import { handleIpc, handleIpcOnce, onIpc } from "./ipc"
 import * as fs from "node:fs"
-import { ImageCallbackTypes, StoredRules, TouchBarTexts } from "../schema-types"
+import {
+    ImageCallbackTypes,
+    LinkTarget,
+    StoredRules,
+    TouchBarTexts,
+} from "../schema-types"
 import { initMainTouchBar } from "./touchbar"
+import { getDefaultBrowser, openInPrivateWindow } from "./private-window"
+import { getLinkTarget } from "./settings"
 import * as fontList from "font-list"
 
 const webviewInputFocused = `(() => {
@@ -85,14 +92,29 @@ export function setUtilsListeners(manager: WindowManager) {
     setPermissionHandlers(session.defaultSession)
     setPermissionHandlers(session.fromPartition("sandbox"))
 
+    async function openPrivate(url: string) {
+        try {
+            await openInPrivateWindow(url)
+        } catch (err) {
+            console.log(err)
+            if (manager.hasWindow())
+                manager.mainWindow.webContents.send("private-window-failed")
+        }
+    }
+
     async function openExternal(url: string, background = false) {
         if (url.startsWith("https://") || url.startsWith("http://")) {
+            const isPrivate = getLinkTarget() === LinkTarget.Private
             if (background && process.platform === "darwin") {
-                shell.openExternal(url, { activate: false })
+                if (isPrivate) openPrivate(url)
+                else shell.openExternal(url, { activate: false })
             } else if (background && manager.hasWindow()) {
                 manager.mainWindow.setAlwaysOnTop(true)
-                await shell.openExternal(url)
+                if (isPrivate) await openPrivate(url)
+                else await shell.openExternal(url)
                 setTimeout(() => manager.mainWindow.setAlwaysOnTop(false), 1000)
+            } else if (isPrivate) {
+                openPrivate(url)
             } else {
                 shell.openExternal(url)
             }
@@ -133,6 +155,10 @@ export function setUtilsListeners(manager: WindowManager) {
 
     handleIpc("open-external", (_, url: string, background: boolean) => {
         openExternal(url, background)
+    })
+
+    handleIpc("can-open-private-window", async () => {
+        return (await getDefaultBrowser()) !== null
     })
 
     handleIpc("show-error-box", async (_, title, content, copy?: string) => {

@@ -7,7 +7,7 @@ import {
     calculateItemSize,
     getSearchEngineName,
 } from "../../scripts/utils"
-import { ThemeSettings, SearchEngines } from "../../schema-types"
+import { LinkTarget, ThemeSettings, SearchEngines } from "../../schema-types"
 import {
     getThemeSettings,
     setThemeSettings,
@@ -148,6 +148,10 @@ function AppTab({
     const [searchEngine, setSearchEngine] = useState(() =>
         window.settings.getSearchEngine()
     )
+    const [linkTarget, setLinkTarget] = useState(() =>
+        String(window.settings.getLinkTarget())
+    )
+    const [canOpenPrivate, setCanOpenPrivate] = useState<boolean>(null)
     const [pacStatus, setPacStatus] = useState(() =>
         window.settings.getProxyStatus()
     )
@@ -163,6 +167,9 @@ function AppTab({
         })
         totalCacheSize().then(size => {
             if (active) setCacheSize(byteToMB(size))
+        })
+        window.utils.canOpenPrivateWindow().then(supported => {
+            if (active) setCanOpenPrivate(supported)
         })
         return () => {
             active = false
@@ -212,6 +219,16 @@ function AppTab({
             ? intl.get("app.daysAgo", { days })
             : intl.get("app.deleteAll"),
     }))
+    const linkTargetOptions = [
+        {
+            value: String(LinkTarget.Normal),
+            text: intl.get("app.normalWindow"),
+        },
+        {
+            value: String(LinkTarget.Private),
+            text: intl.get("app.privateWindow"),
+        },
+    ]
     const validPacUrl = urlTest(pacUrl)
     const pacError = pacUrl && !validPacUrl ? intl.get("app.badUrl") : ""
 
@@ -326,6 +343,43 @@ function AppTab({
                         {searchEngineOptions.map(engine => (
                             <Option key={engine} value={String(engine)}>
                                 {getSearchEngineName(engine)}
+                            </Option>
+                        ))}
+                    </Dropdown>
+                </SettingRow>
+                <SettingRow
+                    label={intl.get("app.linkTarget")}
+                    hint={
+                        canOpenPrivate === false
+                            ? intl.get("app.privateUnsupported")
+                            : undefined
+                    }>
+                    <Dropdown
+                        inlinePopup
+                        className={classes.dropdown}
+                        selectedOptions={[linkTarget]}
+                        value={
+                            linkTargetOptions.find(
+                                option => option.value === linkTarget
+                            )?.text || ""
+                        }
+                        onOptionSelect={(_, data) => {
+                            if (!data.optionValue) return
+                            setLinkTarget(data.optionValue)
+                            window.settings.setLinkTarget(
+                                Number(data.optionValue)
+                            )
+                        }}>
+                        {linkTargetOptions.map(option => (
+                            <Option
+                                key={option.value}
+                                value={option.value}
+                                disabled={
+                                    option.value ===
+                                        String(LinkTarget.Private) &&
+                                    canOpenPrivate !== true
+                                }>
+                                {option.text}
                             </Option>
                         ))}
                     </Dropdown>
