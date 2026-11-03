@@ -127,7 +127,6 @@ export function RuleList({
                 )}
             </FlatButtonGroup>
             <div
-                className={classes.grid}
                 onDragOver={event => event.preventDefault()}
                 onDrop={event => {
                     event.preventDefault()

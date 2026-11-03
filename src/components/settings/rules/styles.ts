@@ -26,7 +26,6 @@ export const useStyles = makeStyles({
     },
     toolbarSeparator: { fontSize: "16px", width: "16px" },
     delete: { color: tokens.colorPaletteRedForeground1 },
-    grid: { maxHeight: "400px", overflowY: "auto" },
     ruleRow: { cursor: "grab" },
     unsupported: { color: tokens.colorPaletteRedForeground1 },
     hint: {

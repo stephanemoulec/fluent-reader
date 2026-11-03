@@ -214,6 +214,8 @@ const Settings: React.FC = () => {
                         </div>
                         <div
                             role="tabpanel"
+                            // Fluent's virtualized lists render rows by this scroller.
+                            data-is-scrollable="true"
                             aria-label={intl.get(activeTab.label)}
                             className={settingsClasses.content}>
                             <ActiveContent />

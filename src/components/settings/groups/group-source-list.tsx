@@ -120,7 +120,6 @@ export function GroupSourceList({
 
     return (
         <div
-            className={classes.grid}
             onDragOver={event => event.preventDefault()}
             onDrop={event => {
                 event.preventDefault()

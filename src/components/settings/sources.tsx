@@ -60,6 +60,7 @@ const enum EditDropdownKeys {
 
 class SourcesTab extends React.Component<SourcesTabProps, SourcesTabState> {
     selection: Selection
+    editor = React.createRef<HTMLDivElement>()
 
     constructor(props) {
         super(props)
@@ -94,6 +95,16 @@ class SourcesTab extends React.Component<SourcesTabProps, SourcesTabState> {
             }
             this.props.acknowledgeSIDs()
         }
+    }
+
+    // The list isn't height-capped, so its editor can start below the fold.
+    componentDidUpdate = (_, prevState: SourcesTabState) => {
+        const sid = this.state.selectedSource?.sid
+        if (sid !== undefined && sid !== prevState.selectedSource?.sid)
+            this.editor.current?.scrollIntoView({
+                block: "nearest",
+                behavior: "smooth",
+            })
     }
 
     columns = (): IColumn[] => [
@@ -274,7 +285,7 @@ class SourcesTab extends React.Component<SourcesTabProps, SourcesTabState> {
             />
 
             {this.state.selectedSource && (
-                <>
+                <div ref={this.editor}>
                     {this.state.selectedSource.serviceRef && (
                         <MessageBar messageBarType={MessageBarType.info}>
                             {intl.get("sources.serviceManaged")}
@@ -448,7 +459,7 @@ class SourcesTab extends React.Component<SourcesTabProps, SourcesTabState> {
                             </Stack.Item>
                         </Stack>
                     )}
-                </>
+                </div>
             )}
             {this.state.selectedSources &&
                 (this.state.selectedSources.filter(s => s.serviceRef).length ===
