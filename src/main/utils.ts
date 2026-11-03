@@ -100,9 +100,13 @@ export function setUtilsListeners(manager: WindowManager) {
         }
     }
 
-    async function openExternal(url: string, background = false) {
+    async function openExternal(
+        url: string,
+        background = false,
+        target = getLinkTarget()
+    ) {
         if (url.startsWith("https://") || url.startsWith("http://")) {
-            const isPrivate = getLinkTarget() === LinkTarget.Private
+            const isPrivate = target === LinkTarget.Private
             if (background && process.platform === "darwin") {
                 if (isPrivate) openPrivate(url)
                 else shell.openExternal(url, { activate: false })
@@ -151,9 +155,17 @@ export function setUtilsListeners(manager: WindowManager) {
         event.returnValue = app.getVersion()
     })
 
-    handleIpc("open-external", (_, url: string, background: boolean) => {
-        openExternal(url, background)
-    })
+    handleIpc(
+        "open-external",
+        (_, url: string, background: boolean, target?: LinkTarget) => {
+            // The renderer can ask for a private window, but never override one.
+            openExternal(
+                url,
+                background === true,
+                target === LinkTarget.Private ? target : undefined
+            )
+        }
+    )
 
     handleIpc("can-open-private-window", async () => {
         return (await getDefaultBrowser()) !== null

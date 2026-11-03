@@ -1,6 +1,7 @@
 import { ipcRenderer } from "electron"
 import {
     ImageCallbackTypes,
+    LinkTarget,
     TouchBarTexts,
     WindowStateListenerType,
 } from "../schema-types"
@@ -17,8 +18,9 @@ const utilsBridge = {
         return ipcRenderer.invoke("check-update")
     },
 
-    openExternal: (url: string, background = false) => {
-        ipcRenderer.invoke("open-external", url, background)
+    // Without a target, links follow the "Open links in" setting.
+    openExternal: (url: string, background = false, target?: LinkTarget) => {
+        ipcRenderer.invoke("open-external", url, background, target)
     },
 
     canOpenPrivateWindow: (): Promise<boolean> => {

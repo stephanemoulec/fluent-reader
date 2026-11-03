@@ -22,8 +22,9 @@ import {
     updateSource,
     SourceTextDirection,
 } from "../scripts/models/source"
-import { shareSubmenu } from "./context-menu"
+import { privateWindowItem, shareSubmenu } from "./context-menu"
 import { platformCtrl } from "../scripts/utils"
+import { usePrivateWindowSupport } from "./utils/hooks/usePrivateWindowSupport"
 import { Spinner } from "@fluentui/react-components"
 import { useAppDispatch, useAppSelector } from "../scripts/reducer"
 import { dismissItem, showOffsetItem } from "../scripts/models/page"
@@ -117,6 +118,7 @@ function Article({ itemId, side = false }: ArticleProps) {
     const item = useAppSelector(state => state.items[itemId])
     const source = useAppSelector(state => state.sources[item.source])
     const locale = useAppSelector(state => state.app.locale)
+    const canOpenPrivate = usePrivateWindowSupport()
     const [fontFamily, setFontFamily] = useState(() =>
         window.settings.getFont()
     )
@@ -309,6 +311,7 @@ function Article({ itemId, side = false }: ArticleProps) {
                     window.utils.openExternal(item.link, platformCtrl(e))
                 },
             },
+            ...(canOpenPrivate ? [privateWindowItem(item.link)] : []),
             {
                 key: "copyURL",
                 text: intl.get("context.copyURL"),

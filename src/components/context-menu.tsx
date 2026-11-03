@@ -27,7 +27,13 @@ import {
     toggleHidden,
     toggleStarred,
 } from "../scripts/models/item"
-import { ViewType, ImageCallbackTypes, ViewConfigs } from "../schema-types"
+import {
+    ViewType,
+    ImageCallbackTypes,
+    ViewConfigs,
+    LinkTarget,
+} from "../schema-types"
+import { usePrivateWindowSupport } from "./utils/hooks/usePrivateWindowSupport"
 import { FilterType } from "../scripts/models/feed"
 import { useAppDispatch, useAppSelector } from "../scripts/reducer"
 import {
@@ -37,6 +43,20 @@ import {
     switchView,
     toggleFilter,
 } from "../scripts/models/page"
+
+// Callers include it only when usePrivateWindowSupport() says the browser can.
+export const privateWindowItem = (
+    url: string,
+    onOpen?: () => void
+): IContextualMenuItem => ({
+    key: "openPrivate",
+    text: intl.get("context.openPrivate"),
+    iconProps: { iconName: "Hide3" },
+    onClick: e => {
+        onOpen?.()
+        globalThis.utils.openExternal(url, platformCtrl(e), LinkTarget.Private)
+    },
+})
 
 export const shareSubmenu = (item: RSSItem): IContextualMenuItem[] => [
     { key: "qr", url: item.link, onRender: renderShareQR },
@@ -88,6 +108,7 @@ function ItemContextMenu() {
     const target = useAppSelector(state => state.app.contextMenu.target)
     const item = target[0] as RSSItem
     const feedId = target[1] as string
+    const canOpenPrivate = usePrivateWindowSupport()
 
     const menuItems: IContextualMenuItem[] = [
         {
@@ -108,6 +129,9 @@ function ItemContextMenu() {
                 globalThis.utils.openExternal(item.link, platformCtrl(e))
             },
         },
+        ...(canOpenPrivate
+            ? [privateWindowItem(item.link, () => dispatch(markRead(item)))]
+            : []),
         {
             key: "markAsRead",
             text: item.hasRead
@@ -273,6 +297,7 @@ function TextContextMenu() {
         string,
         string
     ]
+    const canOpenPrivate = usePrivateWindowSupport()
     const text = target[0]
     const url = target[1]
     const menuItems: IContextualMenuItem[] = text
@@ -305,6 +330,7 @@ function TextContextMenu() {
                             globalThis.utils.openExternal(url, platformCtrl(e))
                         },
                     },
+                    ...(canOpenPrivate ? [privateWindowItem(url)] : []),
                     {
                         key: "copyURL",
                         text: intl.get("context.copyURL"),

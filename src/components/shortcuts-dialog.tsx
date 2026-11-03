@@ -46,6 +46,7 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
             { keys: ["M"], label: "shortcuts.read" },
             { keys: ["S", "F"], label: "shortcuts.star" },
             { keys: ["B"], label: "shortcuts.browser" },
+            { keys: ["Shift+B"], label: "shortcuts.private" },
             { keys: ["H"], label: "shortcuts.hide" },
             { keys: ["Shift+A"], label: "shortcuts.markAll" },
             { keys: ["Shift+M"], label: "shortcuts.markBelow" },

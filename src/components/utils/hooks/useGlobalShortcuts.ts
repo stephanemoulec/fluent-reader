@@ -171,6 +171,8 @@ const handleShortcut =
             else if (key === "a") dispatch(markAllRead())
             else if (key === "m" && targetItem)
                 dispatch(markAllRead(null, targetItem.date))
+            else if (key === "b" && targetItem)
+                dispatch(itemShortcuts(targetItem, e))
             else handled = false
         } else if (e.code in VIEW_KEYS) {
             if (overlayOpen) return

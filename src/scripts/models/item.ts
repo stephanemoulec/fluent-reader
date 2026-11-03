@@ -4,6 +4,7 @@ import { eq, and, lte, gte } from "drizzle-orm"
 import { database, itemsTable, itemsInSources } from "../db"
 import { getValidDate } from "../date"
 import intl from "react-intl-universal"
+import { LinkTarget } from "../../schema-types"
 import type { MyParserItem } from "../utils"
 import {
     domParser,
@@ -518,7 +519,11 @@ export function itemShortcuts(item: RSSItem, e: KeyboardEvent): AppThunk {
             case "b":
             case "B":
                 if (!item.hasRead) dispatch(markRead(item))
-                window.utils.openExternal(item.link, platformCtrl(e))
+                window.utils.openExternal(
+                    item.link,
+                    platformCtrl(e),
+                    e.shiftKey ? LinkTarget.Private : undefined
+                )
                 break
             case "s":
             case "S":
